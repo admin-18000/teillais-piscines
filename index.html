@@ -258,6 +258,8 @@ body{
 .zitem{background:var(--bg);border:1px solid var(--bdr);border-radius:var(--rs);padding:14px}
 .zdot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
 .zmaps{display:block;width:100%;margin-top:12px;background:var(--B);color:#fff;border:none;border-radius:var(--rs);padding:12px;font-size:14px;cursor:pointer;font-family:var(--f);font-weight:700;text-align:center;min-height:44px}
+.zmaps-inline{display:inline-flex;align-items:center;gap:6px;background:var(--B);color:#fff;border:none;border-radius:var(--rs);padding:9px 16px;font-size:13px;cursor:pointer;font-family:var(--f);font-weight:700;min-height:40px}
+.zmaps-inline:active{opacity:.85}
 /* Legends */
 .lg{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .lgi{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2)}
@@ -559,7 +561,7 @@ input[type="file"]{display:none}
 <!-- ZONES GEO -->
 <div class="view" id="view-zones">
   <div class="ptitle">Zones géographiques</div>
-  <div class="psub">Regroupement par département · Tournées départ Bourges (18)</div>
+  <div class="psub">Regroupement par ville · Distance depuis Bourges · Tournées départ/retour Bourges (18)</div>
   <div class="card">
     <div class="ch"><div class="ct">🗺️ Clients par zone</div><button class="btn bs sm" onclick="mapsAll()">🗺 Toutes zones</button></div>
     <div class="cb" id="z-cont"></div>
@@ -1697,31 +1699,50 @@ function renderZones(){
   const cont=document.getElementById('z-cont');
   const cls=clSaison();
   if(!cls.length){cont.innerHTML='<div class="empty"><div class="ei">🗺️</div><p>Aucun client enregistré</p></div>';return;}
+
+  // Regroupement par VILLE
   const zones={};
   cls.forEach(c=>{
-    const dept=c.cp.substring(0,2);
-    const lbl=`${dept} — ${DEPTS[dept]||dept}`;
-    if(!zones[lbl])zones[lbl]=[];zones[lbl].push(c);
+    const ville=(c.ville||'—').trim().toUpperCase();
+    if(!zones[ville])zones[ville]=[];
+    zones[ville].push(c);
   });
+
   cont.innerHTML='<div class="zlist">'+
-    Object.entries(zones).sort((a,b)=>b[1].length-a[1].length).map(([zone,zc],i)=>{
-      const col=ZCOLS[i%ZCOLS.length];
-      const cities=[...new Set(zc.map(c=>c.ville))].slice(0,7).join(', ');
-      const addrs=zc.map(c=>encodeURIComponent([c.adresse,c.cp,c.ville].filter(Boolean).join(' ')));
-      return`<div class="zitem">
-        <div class="zdot" style="background:${col}"></div>
-        <div style="flex:1">
-          <div style="font-weight:800;font-size:13px;margin-bottom:3px">${zone}
-            <span style="font-size:11px;color:var(--t2);font-weight:400;margin-left:6px">${zc.length} client(s)</span>
+    Object.entries(zones)
+      .sort((a,b)=>b[1].length-a[1].length)
+      .map(([ville,zc],i)=>{
+        const col=ZCOLS[i%ZCOLS.length];
+        const dept=zc[0].cp.substring(0,2);
+        const deptLbl=DEPTS[dept]||dept;
+        const distKm=Math.round(geoDistance(zc[0].cp,'18000'));
+        const addrs=zc.map(c=>encodeURIComponent([c.adresse,c.cp,c.ville].filter(Boolean).join(' ')));
+        const planned=zc.filter(c=>c.planifie).length;
+        return`<div class="zitem">
+          <div class="zdot" style="background:${col};margin-top:3px"></div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+              <span style="font-weight:800;font-size:14px">${ville}</span>
+              <span style="font-size:11px;color:var(--t2)">${deptLbl} (${dept})</span>
+              <span style="font-size:11px;font-weight:700;color:${col};background:${col}18;padding:2px 7px;border-radius:10px">${zc.length} client${zc.length>1?'s':''}</span>
+              <span style="font-size:11px;color:var(--t3)">📍 ~${distKm} km de Bourges</span>
+              ${planned>0?`<span style="font-size:11px;color:#065F46;background:#D1FAE5;padding:2px 7px;border-radius:10px;font-weight:700">✅ ${planned} planifié${planned>1?'s':''}</span>`:''}
+            </div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+              ${zc.map(c=>{
+                const pi=PRESTA[c.presta]||{};
+                const planCol=c.planifie?'#065F46':'#92400E';
+                const planBg=c.planifie?'#D1FAE5':'#FEF3C7';
+                return`<span style="background:${col}18;color:${col};border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid ${col}44;display:inline-flex;align-items:center;gap:4px" onclick="showCM(${JSON.stringify(c.id)})">
+                  ${c.nom} ${c.prenom}
+                  <span style="background:${planBg};color:${planCol};border-radius:4px;padding:1px 5px;font-size:9.5px;font-weight:800">${c.planifie?`S${c.wkPl}`:'⏳'}</span>
+                </span>`;
+              }).join('')}
+            </div>
+            <button class="zmaps-inline" onclick='doMaps(${JSON.stringify(addrs)})'>🗺 Itinéraire ${ville}</button>
           </div>
-          <div style="font-size:11px;color:var(--t2);margin-bottom:5px">${cities}</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap">
-            ${zc.map(c=>`<span style="background:${col}22;color:${col};border-radius:4px;padding:2px 6px;font-size:10.5px;font-weight:700;cursor:pointer" onclick="showCM(${JSON.stringify(c.id)})">${c.nom} ${c.prenom}</span>`).join('')}
-          </div>
-        </div>
-        <button class="zmaps" onclick='doMaps(${JSON.stringify(addrs)})'>🗺 Itinéraire</button>
-      </div>`;
-    }).join('')+'</div>';
+        </div>`;
+      }).join('')+'</div>';
 }
 function doMaps(addrs){
   if(!addrs.length)return;
@@ -1729,7 +1750,7 @@ function doMaps(addrs){
   let url=`https://www.google.com/maps/dir/${base}/`;
   addrs.slice(0,9).forEach(a=>{url+=a+'/';});url+=base;window.open(url,'_blank');
 }
-function mapsAll(){doMaps(clSaison().map(c=>encodeURIComponent([c.adresse,c.cp,c.ville].filter(Boolean).join(' '))).slice(0,9));}
+function mapsAll(){doMaps(clSaison().filter(c=>c.planifie).map(c=>encodeURIComponent([c.adresse,c.cp,c.ville].filter(Boolean).join(' '))).slice(0,9));}
 
 /* ════ DASHBOARD ════ */
 function renderDash(){
