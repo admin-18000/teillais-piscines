@@ -287,7 +287,9 @@ tr:last-child td{border-bottom:none}
 .mo-txt{font-size:14px;line-height:1.55;color:var(--t2)}.mo-txt strong{color:var(--t)}
 .info-pill{display:inline-flex;background:var(--Bl);color:var(--B);border-radius:6px;padding:5px 11px;font-size:12px;font-weight:700;margin:3px}
 .info-pill.g{background:#D1FAE5;color:#065F46}.info-pill.o{background:#FFF7ED;color:#92400E}
-.geo-alert{background:#FFF7ED;border:1px solid #FCD34D;border-radius:var(--rs);padding:10px 13px;font-size:12px;color:#92400E;margin-bottom:8px}
+.geo-alert{border-radius:var(--rs);padding:12px 14px;font-size:12px;margin-bottom:8px;line-height:1.5}
+.geo-alert-orange{background:#FFF7ED;border:1.5px solid #F59E0B;color:#92400E}
+.geo-alert-red{background:#FEF2F2;border:1.5px solid #FCA5A5;color:#991B1B}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
 input[type="file"]{display:none}
 
@@ -1348,15 +1350,44 @@ function openSlotMob(wk,day){
 
 function renderGeoAlerts(w){
   const box=document.getElementById('geo-alerts');if(!box)return;
-  // Detect days with clients from 3+ different departments → suggest grouping
   const alerts=[];
+  const wks=getWks();
+
+  // ── ALERTE 1 : client placé sur une semaine différente de celle demandée ──
+  const decales=DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===w&&c.wkSouh&&c.wkSouh!==w);
+  if(decales.length){
+    const noms=decales.map(c=>`<strong>${c.nom} ${c.prenom}</strong> (dem. S${c.wkSouh})`).join(', ');
+    alerts.push(`<div class="geo-alert geo-alert-orange">
+      ⚠️ <strong>${decales.length} client(s) placé(s) sur S${w} alors qu'ils demandaient une autre semaine</strong> — à vérifier si rappel nécessaire :<br>
+      <span style="font-size:11px;margin-top:4px;display:block">${noms}</span>
+    </div>`);
+  }
+
+  // ── ALERTE 2 : journée géographiquement incohérente ──
   for(let d=0;d<5;d++){
     const dayClients=DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===w&&c.jour===d);
-    const depts=[...new Set(dayClients.map(c=>c.cp.substring(0,2)))];
-    if(depts.length>=3){
-      alerts.push(`<div class="geo-alert">📍 ${DAYS[d]} : clients dans ${depts.length} départements différents (${depts.join(', ')}) — envisagez de regrouper par zone via 🗺️ Zones géo.</div>`);
+    if(dayClients.length<2)continue;
+    // Calculer distance max entre les clients de la journée
+    let maxDist=0;
+    let pairVilles='';
+    for(let i=0;i<dayClients.length;i++){
+      for(let j=i+1;j<dayClients.length;j++){
+        const dist=geoDistance(dayClients[i].cp,dayClients[j].cp);
+        if(dist>maxDist){
+          maxDist=dist;
+          pairVilles=`${dayClients[i].ville} ↔ ${dayClients[j].ville}`;
+        }
+      }
+    }
+    // Seuil : si 2 clients sont à plus de 80km l'un de l'autre dans la même journée
+    if(maxDist>80){
+      alerts.push(`<div class="geo-alert geo-alert-red">
+        📍 <strong>${DAYS[d]} S${w} : journée géographiquement dispersée</strong> — distance max ${Math.round(maxDist)} km (${pairVilles})<br>
+        <span style="font-size:11px;margin-top:4px;display:block">Envisagez de déplacer certains clients via le planning</span>
+      </div>`);
     }
   }
+
   box.innerHTML=alerts.join('');
 }
 
