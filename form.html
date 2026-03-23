@@ -32,18 +32,15 @@ input:focus{border-color:#0057FF;background:#fff}
 .week small{display:block;font-size:9px;margin-top:1px;opacity:.7}
 .btn-main{width:100%;background:linear-gradient(135deg,#0057FF,#3B82F6);color:#fff;border:none;border-radius:14px;padding:17px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:6px}
 .note{background:#F0FDF4;border:1px solid #A7F3D0;border-radius:10px;padding:12px 14px;font-size:13px;color:#065F46;line-height:1.5;margin-bottom:14px}
-/* Success */
 #done{display:none}
 .big-icon{font-size:56px;text-align:center;margin:24px 0 12px}
 .done-title{font-size:22px;font-weight:800;text-align:center;margin-bottom:8px}
 .done-sub{font-size:14px;color:#5A6478;text-align:center;line-height:1.6;margin-bottom:24px}
 .recap{background:#fff;border:1px solid #DDE3F0;border-radius:12px;padding:16px;margin-bottom:20px}
-.recap-row{margin-bottom:10px}
-.recap-row:last-child{margin-bottom:0}
-.rl{font-size:11px;font-weight:700;color:#5A6478;text-transform:uppercase;margin-bottom:2px}
+.rl{font-size:11px;font-weight:700;color:#5A6478;text-transform:uppercase;margin-bottom:2px;margin-top:10px}
+.rl:first-child{margin-top:0}
 .rv{font-weight:700;font-size:14px}
-.btn-email{display:block;text-align:center;background:linear-gradient(135deg,#0057FF,#3B82F6);color:#fff;text-decoration:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;margin-bottom:10px}
-.btn-sms{display:block;text-align:center;background:linear-gradient(135deg,#059669,#10B981);color:#fff;text-decoration:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;margin-bottom:6px}
+.btn-contact{display:block;text-align:center;text-decoration:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;margin-bottom:10px;color:#fff}
 .hint{font-size:12px;color:#9CA3AF;text-align:center;margin-bottom:16px}
 </style>
 </head>
@@ -53,175 +50,183 @@ input:focus{border-color:#0057FF;background:#fff}
   <div><h1>Teillais Piscines</h1><p>Demande d'intervention 2026</p></div>
 </header>
 <div class="wrap">
-  <div id="form">
-    <div class="note">👋 Remplissez ce formulaire pour nous indiquer vos souhaits. Nous vous contacterons pour confirmer votre créneau.</div>
+  <div id="form-view">
+    <div class="note">&#128075; Remplissez ce formulaire. Nous vous contacterons pour confirmer votre cr&#233;neau.</div>
     <div class="card">
-      <div class="card-title">👤 Vos coordonnées</div>
+      <div class="card-title">&#128100; Vos coordonn&#233;es</div>
       <div class="card-body">
         <div class="row2">
-          <div><div class="label">Nom *</div><input id="nom" placeholder="DUPONT" oninput="this.value=this.value.toUpperCase()" autocomplete="family-name"></div>
-          <div><div class="label">Prénom *</div><input id="prenom" placeholder="Jean" autocomplete="given-name"></div>
+          <div><div class="label">Nom *</div><input id="f-nom" placeholder="DUPONT" autocomplete="family-name"></div>
+          <div><div class="label">Pr&#233;nom *</div><input id="f-prenom" placeholder="Jean" autocomplete="given-name"></div>
         </div>
-        <div><div class="label">Adresse *</div><input id="adresse" placeholder="12 rue des Lilas" autocomplete="street-address"></div>
+        <div><div class="label">Adresse *</div><input id="f-adresse" placeholder="12 rue des Lilas" autocomplete="street-address"></div>
         <div class="row2">
-          <div><div class="label">Code postal *</div><input id="cp" placeholder="18000" maxlength="5" inputmode="numeric" autocomplete="postal-code"></div>
-          <div><div class="label">Ville *</div><input id="ville" placeholder="Bourges" autocomplete="address-level2"></div>
+          <div><div class="label">Code postal *</div><input id="f-cp" placeholder="18000" maxlength="5" inputmode="numeric" autocomplete="postal-code"></div>
+          <div><div class="label">Ville *</div><input id="f-ville" placeholder="Bourges" autocomplete="address-level2"></div>
         </div>
         <div class="row2">
-          <div><div class="label">Téléphone</div><input id="tel" type="tel" placeholder="06 XX XX XX XX" autocomplete="tel"></div>
-          <div><div class="label">Email</div><input id="email" type="email" placeholder="jean@exemple.fr" autocomplete="email"></div>
+          <div><div class="label">T&#233;l&#233;phone</div><input id="f-tel" type="tel" placeholder="06 XX XX XX XX" autocomplete="tel"></div>
+          <div><div class="label">Email</div><input id="f-email" type="email" placeholder="jean@exemple.fr" autocomplete="email"></div>
         </div>
-        <div><div class="label">Notes</div><input id="notes" placeholder="Abri, chien, portail..."></div>
+        <div><div class="label">Notes</div><input id="f-notes" placeholder="Abri, chien, portail..."></div>
       </div>
     </div>
     <div class="card">
-      <div class="card-title">🏊 Intervention souhaitée</div>
-      <div class="card-body">
-        <div id="presta-list"></div>
-      </div>
+      <div class="card-title">&#127946; Intervention souhait&#233;e</div>
+      <div class="card-body" id="presta-list"></div>
     </div>
     <div class="card">
-      <div class="card-title">📅 Semaine souhaitée</div>
+      <div class="card-title">&#128197; Semaine souhait&#233;e</div>
       <div class="card-body">
-        <p style="font-size:13px;color:#5A6478">Indiquez votre préférence, nous ferons notre possible.</p>
+        <p style="font-size:13px;color:#5A6478">Indiquez votre pr&#233;f&#233;rence, nous ferons notre possible.</p>
         <div class="weeks" id="week-list"></div>
       </div>
     </div>
-    <button class="btn-main" onclick="envoyer()">✅ Envoyer ma demande</button>
+    <button class="btn-main" id="btn-envoyer">&#9989; Envoyer ma demande</button>
   </div>
   <div id="done">
-    <div class="big-icon">✅</div>
+    <div class="big-icon">&#9989;</div>
     <div class="done-title">Merci !</div>
-    <div class="done-sub">Votre demande est prête. Appuyez sur les boutons ci-dessous pour nous l'envoyer.</div>
-    <div class="recap" id="recap"></div>
-    <a id="lien-email" class="btn-email" href="#">✉️ Envoyer par email</a>
-    <div class="hint">Votre application mail va s'ouvrir — appuyez sur Envoyer</div>
-    <a id="lien-sms" class="btn-sms" href="#">💬 Envoyer par SMS</a>
-    <div class="hint">Votre application SMS va s'ouvrir — appuyez sur Envoyer</div>
+    <div class="done-sub">Envoyez-nous votre demande via les boutons ci-dessous.</div>
+    <div class="recap" id="recap-box"></div>
+    <a id="lien-email" class="btn-contact" style="background:linear-gradient(135deg,#0057FF,#3B82F6)" href="#">&#9993;&#65039; Envoyer par email</a>
+    <div class="hint">Votre appli mail va s'ouvrir &mdash; appuyez sur Envoyer</div>
+    <a id="lien-sms" class="btn-contact" style="background:linear-gradient(135deg,#059669,#10B981)" href="#">&#128172; Envoyer par SMS</a>
+    <div class="hint">Votre appli SMS va s'ouvrir &mdash; appuyez sur Envoyer</div>
   </div>
 </div>
 <script>
-var PRESTATIONS = [
-  {id:'simple',  nom:'Niveau 1 — Ouverture simple',   prix:'240 €', desc:'Remise en route · 1h · 1 technicien'},
-  {id:'complete',nom:'Niveau 2 — Ouverture complète', prix:'390 €', desc:'Nettoyage fond + paroi · 2h · 2 techniciens'},
-  {id:'hiv-simple', nom:'Hivernage simple',  prix:'220 €', desc:'1h · 1 technicien',    saison:'hivernage'},
-  {id:'hiv-complet',nom:'Hivernage complet', prix:'340 €', desc:'2h · 2 techniciens',   saison:'hivernage'}
-];
-var SEMAINES_OUV = [
-  [13,'31/3-4/4'],[14,'7-11/4'],[15,'14-18/4'],[16,'21-25/4'],
-  [17,'28/4-2/5'],[18,'5-9/5'],[19,'12-16/5'],[20,'19-23/5'],
-  [21,'26-30/5'],[22,'2-6/6'],[23,'9-13/6'],[24,'16-20/6'],[25,'23-27/6']
-];
-var SEMAINES_HIV = [
-  [39,'22-26/9'],[40,'29/9-3/10'],[41,'6-10/10'],[42,'13-17/10'],
-  [43,'20-24/10'],[44,'27-31/10'],[45,'3-7/11'],[46,'10-14/11'],
-  [47,'17-21/11'],[48,'24-28/11']
-];
+window.onload = function() {
+  var selPresta = null;
+  var selSemaine = null;
 
-var mois = new Date().getMonth() + 1;
-var saison = (mois >= 9 && mois <= 11) ? 'hivernage' : 'ouverture';
-var selPresta = null;
-var selSemaine = null;
+  var mois = new Date().getMonth() + 1;
+  var saison = (mois >= 9 && mois <= 11) ? 'hivernage' : 'ouverture';
 
-// Afficher les prestations
-var pl = document.getElementById('presta-list');
-PRESTATIONS.forEach(function(p) {
-  if (p.saison && p.saison !== saison) return;
-  if (!p.saison && saison === 'hivernage') return;
-  var d = document.createElement('div');
-  d.className = 'presta';
-  d.id = 'pc-' + p.id;
-  d.innerHTML = '<div class="presta-name">' + p.nom + '</div>'
-    + '<div class="presta-price">' + p.prix + '</div>'
-    + '<div class="presta-desc">' + p.desc + '</div>';
-  d.onclick = function() {
-    selPresta = p.id;
-    document.querySelectorAll('.presta').forEach(function(x){ x.classList.remove('sel'); });
-    d.classList.add('sel');
+  var prestations = saison === 'hivernage' ? [
+    {id:'hiv-simple',  nom:'Hivernage simple',          prix:'220 euros', desc:'1h - 1 technicien'},
+    {id:'hiv-complet', nom:'Hivernage complet',          prix:'340 euros', desc:'2h - 2 techniciens'}
+  ] : [
+    {id:'simple',   nom:'Niveau 1 - Ouverture simple',   prix:'240 euros', desc:'Remise en route - 1h - 1 technicien'},
+    {id:'complete', nom:'Niveau 2 - Ouverture complete', prix:'390 euros', desc:'Nettoyage fond + paroi - 2h - 2 techniciens'}
+  ];
+
+  var semaines = saison === 'hivernage' ? [
+    [39,'22-26/9'],[40,'29/9-3/10'],[41,'6-10/10'],[42,'13-17/10'],
+    [43,'20-24/10'],[44,'27-31/10'],[45,'3-7/11'],[46,'10-14/11'],
+    [47,'17-21/11'],[48,'24-28/11']
+  ] : [
+    [13,'31/3-4/4'],[14,'7-11/4'],[15,'14-18/4'],[16,'21-25/4'],
+    [17,'28/4-2/5'],[18,'5-9/5'],[19,'12-16/5'],[20,'19-23/5'],
+    [21,'26-30/5'],[22,'2-6/6'],[23,'9-13/6'],[24,'16-20/6'],[25,'23-27/6']
+  ];
+
+  // Build prestations
+  var pl = document.getElementById('presta-list');
+  for (var i = 0; i < prestations.length; i++) {
+    (function(p) {
+      var d = document.createElement('div');
+      d.className = 'presta';
+      d.innerHTML = '<div class="presta-name">' + p.nom + '</div>'
+        + '<div class="presta-price">' + p.prix + '</div>'
+        + '<div class="presta-desc">' + p.desc + '</div>';
+      d.onclick = function() {
+        selPresta = p.id;
+        var all = document.querySelectorAll('.presta');
+        for (var j = 0; j < all.length; j++) all[j].classList.remove('sel');
+        d.classList.add('sel');
+      };
+      pl.appendChild(d);
+    })(prestations[i]);
+  }
+
+  // Build semaines
+  var wl = document.getElementById('week-list');
+  for (var i = 0; i < semaines.length; i++) {
+    (function(num, lbl) {
+      var d = document.createElement('div');
+      d.className = 'week';
+      d.innerHTML = '<b>S' + num + '</b><small>' + lbl + '</small>';
+      d.onclick = function() {
+        selSemaine = num;
+        var all = document.querySelectorAll('.week');
+        for (var j = 0; j < all.length; j++) all[j].classList.remove('sel');
+        d.classList.add('sel');
+      };
+      wl.appendChild(d);
+    })(semaines[i][0], semaines[i][1]);
+  }
+
+  // Nom uppercase
+  document.getElementById('f-nom').addEventListener('input', function() {
+    this.value = this.value.toUpperCase();
+  });
+
+  // Submit
+  document.getElementById('btn-envoyer').onclick = function() {
+    var nom = document.getElementById('f-nom').value.trim();
+    var prenom = document.getElementById('f-prenom').value.trim();
+    var adresse = document.getElementById('f-adresse').value.trim();
+    var cp = document.getElementById('f-cp').value.trim();
+    var ville = document.getElementById('f-ville').value.trim();
+    var tel = document.getElementById('f-tel').value.trim();
+    var email = document.getElementById('f-email').value.trim();
+    var notes = document.getElementById('f-notes').value.trim();
+
+    if (!nom || !prenom) { alert('Nom et prenom obligatoires'); return; }
+    if (!adresse || cp.length < 5 || !ville) { alert('Adresse complete obligatoire'); return; }
+    if (!selPresta) { alert('Choisissez un type intervention'); return; }
+
+    var prestaNom = '';
+    for (var i = 0; i < prestations.length; i++) {
+      if (prestations[i].id === selPresta) { prestaNom = prestations[i].nom + ' (' + prestations[i].prix + ')'; break; }
+    }
+    var semaineLbl = selSemaine ? 'Semaine ' + selSemaine : 'Non precisee';
+
+    var appUrl = 'https://admin-18000.github.io/teillais-piscines'
+      + '?nom=' + encodeURIComponent(nom)
+      + '&prenom=' + encodeURIComponent(prenom)
+      + '&adresse=' + encodeURIComponent(adresse)
+      + '&cp=' + encodeURIComponent(cp)
+      + '&ville=' + encodeURIComponent(ville)
+      + '&tel=' + encodeURIComponent(tel)
+      + '&email=' + encodeURIComponent(email)
+      + '&notes=' + encodeURIComponent(notes)
+      + '&presta=' + encodeURIComponent(selPresta)
+      + '&wk=' + (selSemaine || '')
+      + '&saison=' + saison;
+
+    var sujet = 'Demande intervention - ' + nom + ' ' + prenom + ' - ' + ville;
+    var corps = 'Nouvelle demande Teillais Piscines\n\n'
+      + 'Nom : ' + nom + ' ' + prenom + '\n'
+      + 'Adresse : ' + adresse + ', ' + cp + ' ' + ville + '\n'
+      + (tel ? 'Tel : ' + tel + '\n' : '')
+      + (email ? 'Email : ' + email + '\n' : '')
+      + (notes ? 'Notes : ' + notes + '\n' : '')
+      + '\nIntervention : ' + prestaNom + '\n'
+      + 'Semaine : ' + semaineLbl + '\n'
+      + '\nLIEN APP :\n' + appUrl;
+
+    var sms = 'TP Piscines - ' + nom + ' ' + prenom + ' - ' + cp + ' ' + ville
+      + ' - ' + prestaNom + ' - ' + semaineLbl + ' - Lien: ' + appUrl;
+
+    document.getElementById('lien-email').href =
+      'mailto:melvin@teillaispiscines.fr?subject=' + encodeURIComponent(sujet) + '&body=' + encodeURIComponent(corps);
+    document.getElementById('lien-sms').href =
+      'sms:+33666975529?body=' + encodeURIComponent(sms);
+
+    document.getElementById('recap-box').innerHTML =
+      '<div class="rl">Client</div><div class="rv">' + nom + ' ' + prenom + '</div>'
+      + '<div class="rl">Adresse</div><div class="rv">' + adresse + ', ' + cp + ' ' + ville + '</div>'
+      + (tel ? '<div class="rl">Tel</div><div class="rv">' + tel + '</div>' : '')
+      + '<div class="rl">Intervention</div><div class="rv">' + prestaNom + '</div>'
+      + '<div class="rl">Semaine</div><div class="rv">' + semaineLbl + '</div>';
+
+    document.getElementById('form-view').style.display = 'none';
+    document.getElementById('done').style.display = 'block';
+    window.scrollTo(0, 0);
   };
-  pl.appendChild(d);
-});
-
-// Afficher les semaines
-var semaines = (saison === 'hivernage') ? SEMAINES_HIV : SEMAINES_OUV;
-var wl = document.getElementById('week-list');
-semaines.forEach(function(s) {
-  var num = s[0], lbl = s[1];
-  var d = document.createElement('div');
-  d.className = 'week';
-  d.id = 'wk-' + num;
-  d.innerHTML = '<b>S' + num + '</b><small>' + lbl + '</small>';
-  d.onclick = function() {
-    selSemaine = num;
-    document.querySelectorAll('.week').forEach(function(x){ x.classList.remove('sel'); });
-    d.classList.add('sel');
-  };
-  wl.appendChild(d);
-});
-
-function envoyer() {
-  var nom = document.getElementById('nom').value.trim();
-  var prenom = document.getElementById('prenom').value.trim();
-  var adresse = document.getElementById('adresse').value.trim();
-  var cp = document.getElementById('cp').value.trim();
-  var ville = document.getElementById('ville').value.trim();
-  var tel = document.getElementById('tel').value.trim();
-  var email = document.getElementById('email').value.trim();
-  var notes = document.getElementById('notes').value.trim();
-
-  if (!nom || !prenom) { alert('Nom et prénom obligatoires'); return; }
-  if (!adresse || cp.length < 5 || !ville) { alert('Adresse complète obligatoire'); return; }
-  if (!selPresta) { alert('Choisissez un type d'intervention'); return; }
-
-  var presta = PRESTATIONS.find(function(p){ return p.id === selPresta; });
-  var prestaNom = presta ? presta.nom + ' (' + presta.prix + ')' : selPresta;
-  var semaineLbl = selSemaine ? 'Semaine ' + selSemaine : 'Non précisée';
-
-  var appUrl = 'https://admin-18000.github.io/teillais-piscines'
-    + '?nom=' + encodeURIComponent(nom)
-    + '&prenom=' + encodeURIComponent(prenom)
-    + '&adresse=' + encodeURIComponent(adresse)
-    + '&cp=' + encodeURIComponent(cp)
-    + '&ville=' + encodeURIComponent(ville)
-    + '&tel=' + encodeURIComponent(tel)
-    + '&email=' + encodeURIComponent(email)
-    + '&notes=' + encodeURIComponent(notes)
-    + '&presta=' + encodeURIComponent(selPresta)
-    + '&wk=' + (selSemaine || '')
-    + '&saison=' + saison;
-
-  // Email
-  var sujet = 'Demande intervention - ' + nom + ' ' + prenom + ' - ' + ville;
-  var corps = 'Nouvelle demande Teillais Piscines\n\n'
-    + 'Nom : ' + nom + ' ' + prenom + '\n'
-    + 'Adresse : ' + adresse + ', ' + cp + ' ' + ville + '\n'
-    + (tel ? 'Tel : ' + tel + '\n' : '')
-    + (email ? 'Email : ' + email + '\n' : '')
-    + (notes ? 'Notes : ' + notes + '\n' : '')
-    + '\nIntervention : ' + prestaNom + '\n'
-    + 'Semaine : ' + semaineLbl + '\n'
-    + '\nLIEN APP :\n' + appUrl;
-
-  document.getElementById('lien-email').href =
-    'mailto:melvin@teillaispiscines.fr?subject=' + encodeURIComponent(sujet) + '&body=' + encodeURIComponent(corps);
-
-  // SMS
-  var sms = 'TP Piscines - ' + nom + ' ' + prenom + ' - ' + cp + ' ' + ville
-    + ' - ' + prestaNom + ' - ' + semaineLbl + ' - Lien: ' + appUrl;
-  document.getElementById('lien-sms').href = 'sms:+33666975529?body=' + encodeURIComponent(sms);
-
-  // Récap
-  document.getElementById('recap').innerHTML =
-    '<div class="recap-row"><div class="rl">Client</div><div class="rv">' + nom + ' ' + prenom + '</div></div>'
-    + '<div class="recap-row"><div class="rl">Adresse</div><div class="rv">' + adresse + ', ' + cp + ' ' + ville + '</div></div>'
-    + (tel ? '<div class="recap-row"><div class="rl">Téléphone</div><div class="rv">' + tel + '</div></div>' : '')
-    + '<div class="recap-row"><div class="rl">Intervention</div><div class="rv">' + prestaNom + '</div></div>'
-    + '<div class="recap-row"><div class="rl">Semaine</div><div class="rv">' + semaineLbl + '</div></div>';
-
-  document.getElementById('form').style.display = 'none';
-  document.getElementById('done').style.display = 'block';
-  window.scrollTo(0, 0);
-}
+};
 </script>
 </body>
 </html>
