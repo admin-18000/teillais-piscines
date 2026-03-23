@@ -784,15 +784,16 @@ function rebuildWKS(){
 
 const PRESTA={
   simple:       {lbl:'Niv.1 Simple',      price:240,  h:1,techs:1,css:'simple'   },
-  complete:     {lbl:'Niv.2 Complète',    price:390,  h:2,techs:2,css:'complete' },
+  complete:     {lbl:'Niv.2 Complète',    price:390,  h:2,techs:1,css:'complete', needsDoublure:true},
   active:       {lbl:'Active sous abri',  price:195,  h:1,techs:1,css:'active',  addon:true},
   'ent-visite': {lbl:'Visite entretien',  price:0,    h:1,techs:1,css:'entretien'},
   'ent-analyse':{lbl:'Analyse eau',       price:0,    h:0,techs:0,css:'entretien'},
   'ent-commande':{lbl:'Commande −15%',    price:0,    h:0,techs:0,css:'entretien'},
   'hiv-simple': {lbl:'Hivernage simple',  price:220,  h:1,techs:1,css:'hivernage'},
-  'hiv-complet':{lbl:'Hivernage complet', price:340,  h:2,techs:2,css:'hivernage'},
+  'hiv-complet':{lbl:'Hivernage complet', price:340,  h:2,techs:1,css:'hivernage', needsDoublure:true},
   'hiv-actif':  {lbl:'Hivernage actif',   price:80,   h:1,techs:1,css:'hivernage',addon:true}
 };
+/* needsDoublure = Tech principal (Tech1 ou Tech2) + Tech3 doublure obligatoire sur le même créneau */
 
 const DEPTS={'18':'Cher','58':'Nièvre','03':'Allier','71':'S&L','45':'Loiret',
   '23':'Creuse','63':'Puy-de-Dôme','36':'Indre','37':'I&L','89':'Yonne','21':'C.d\'Or'};
@@ -1432,9 +1433,12 @@ function sortGeo(){
     c.wkSouh=w;
     const pi=PRESTA[c.presta]||{h:1,techs:1};
     for(let d=0;d<5;d++){
-      if(pi.techs===2){
-        const av=DB.techs.filter(t=>slotH(w,d,t.id)+pi.h<=MAX_H);
-        if(av.length>=2){c.planifie=true;c.wkPl=w;c.jour=d;c.techId=av[0].id;placed++;break;}
+      if(pi.needsDoublure){
+        const dbl=DB.techs[2];
+        if(dbl&&slotH(w,d,dbl.id)+pi.h<=MAX_H){
+          const mn=DB.techs.slice(0,2).filter(t=>slotH(w,d,t.id)+pi.h<=MAX_H);
+          if(mn.length){c.planifie=true;c.wkPl=w;c.jour=d;c.techId=mn[0].id;c.doublureId=dbl.id;placed++;break;}
+        }
       } else {
         const best=[...DB.techs].sort((a,b)=>slotH(w,d,a.id)-slotH(w,d,b.id))[0];
         if(best&&slotH(w,d,best.id)+pi.h<=MAX_H){c.planifie=true;c.wkPl=w;c.jour=d;c.techId=best.id;placed++;break;}
@@ -1574,15 +1578,15 @@ function findBestSlot(client, wks, preferWk){
     // Ne pas aller trop loin de la semaine souhaitée au premier tour
     if(preferWk&&Math.abs(wk.num-preferWk)>3)continue;
     for(let d=0;d<5;d++){
-      if(pi.techs===2){
-        // Besoin de 2 techs disponibles sur le même jour
-        const av=DB.techs.filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
-        if(av.length<2)continue;
-        // Score géo : moyenne des 2 techs les plus proches
-        const scored=av.map(t=>({t,s:techGeoScore(wk.num,d,t.id,cp)})).sort((a,b)=>a.s-b.s);
-        const score=(scored[0].s+scored[1].s)/2;
+      if(pi.needsDoublure){
+        const dbl=DB.techs[2];
+        if(!dbl||slotH(wk.num,d,dbl.id)+pi.h>MAX_H)continue;
+        const mn=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
+        if(!mn.length)continue;
+        const scored=mn.map(t=>({t,s:techGeoScore(wk.num,d,t.id,cp)})).sort((a,b)=>a.s-b.s);
+        const score=scored[0].s;
         const isSuggested=preferWk&&wk.num!==preferWk;
-        if(!best||score<best.score)best={wk:wk.num,day:d,techId:scored[0].t.id,score,isSuggested};
+        if(!best||score<best.score)best={wk:wk.num,day:d,techId:scored[0].t.id,doublureId:dbl.id,score,isSuggested};
       } else {
         // Choisir le tech dont la tournée du jour est déjà la plus proche géo
         const avail=DB.techs.filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
@@ -1599,12 +1603,15 @@ function findBestSlot(client, wks, preferWk){
   if(!best){
     for(const wk of wks){
       for(let d=0;d<5;d++){
-        if(pi.techs===2){
-          const av=DB.techs.filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
-          if(av.length<2)continue;
-          const scored=av.map(t=>({t,s:techGeoScore(wk.num,d,t.id,cp)})).sort((a,b)=>a.s-b.s);
-          const score=(scored[0].s+scored[1].s)/2;
-          if(!best||score<best.score)best={wk:wk.num,day:d,techId:scored[0].t.id,score,isSuggested:true};
+        if(pi.needsDoublure){
+          const doublure2=DB.techs[2];
+          if(!doublure2)continue;
+          if(!doublure2||slotH(wk.num,d,doublure2.id)+pi.h>MAX_H)continue;
+          const mains2=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
+          if(!mains2.length)continue;
+          const scored2=mains2.map(t=>({t,s:techGeoScore(wk.num,d,t.id,cp)})).sort((a,b)=>a.s-b.s);
+          const score2=scored2[0].s;
+          if(!best||score2<best.score)best={wk:wk.num,day:d,techId:scored2[0].t.id,doublureId:doublure2.id,score:score2,isSuggested:true};
         } else {
           const avail=DB.techs.filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
           if(!avail.length)continue;
@@ -1650,12 +1657,17 @@ function showSmartSuggestion(client){
   setTimeout(()=>div.remove(),12000);
 }
 
-function assignDirect(clientId,wk,day,techId){
+function assignDirect(clientId,wk,day,techId,doublureId){
   const c=DB.clients.find(x=>x.id===clientId);if(!c)return;
   c.planifie=true;c.wkPl=wk;c.jour=day;c.techId=techId;
+  if(doublureId)c.doublureId=doublureId;
   markDirty();autosave();updateBadges();renderDash();
   if(document.getElementById('view-planning').classList.contains('on'))renderPlanning();
-  toast(`📌 ${c.prenom} ${c.nom} → ${['Lundi','Mardi','Mercredi','Jeudi','Vendredi'][day]} S${wk}`,'ok');
+  const pi=PRESTA[c.presta]||{};
+  const tech=DB.techs.find(t=>t.id===techId);
+  const doublure=doublureId?DB.techs.find(t=>t.id===doublureId):null;
+  const techStr=doublure?`${tech?.nom||''} + ${doublure.nom} (doublure)`:tech?.nom||'';
+  toast(`📌 ${c.prenom} ${c.nom} → ${['Lundi','Mardi','Mercredi','Jeudi','Vendredi'][day]} S${wk} · ${techStr}`,'ok');
 }
 
 /* ════ AUTO-PLACEMENT ════ */
@@ -1673,7 +1685,9 @@ function autoAll(){
     const wksFrom=wks.filter(w=>w.num>=minWk);
     const best=findBestSlot(c,wksFrom,c.wkSouh);
     if(best){
-      c.planifie=true;c.wkPl=best.wk;c.jour=best.day;c.techId=best.techId;placed++;
+      c.planifie=true;c.wkPl=best.wk;c.jour=best.day;c.techId=best.techId;
+      if(best.doublureId)c.doublureId=best.doublureId;
+      placed++;
     }
   }
   markDirty();autosave();updateBadges();renderDash();renderPlanning();
@@ -1688,7 +1702,8 @@ function autoWeek(){
     .sort((a,b)=>(PRESTA[b.presta]?.h||1)-(PRESTA[a.presta]?.h||1));
   for(const c of up){
     const best=findBestSlot(c,getWks().filter(wk=>wk.num===w),w);
-    if(best){c.planifie=true;c.wkPl=best.wk;c.jour=best.day;c.techId=best.techId;placed++;}
+    if(best){c.planifie=true;c.wkPl=best.wk;c.jour=best.day;c.techId=best.techId;
+      if(best.doublureId)c.doublureId=best.doublureId;placed++;}
   }
   markDirty();autosave();updateBadges();renderPlanning();renderDash();
   toast(`⚡ S${w} géo : ${placed} client(s)`,'ok');
@@ -1926,6 +1941,48 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   // Autosave every 10s
   setInterval(autosave,10000);
+
+  // ── Handle incoming client from formulaire client ──
+  const urlParams=new URLSearchParams(window.location.search);
+  if(urlParams.get('nom')){
+    // Pre-fill the form and navigate to saisie
+    setTimeout(()=>{
+      showV('saisie');updateMobileNav('saisie');
+      const set=(id,val)=>{const e=document.getElementById(id);if(e&&val)e.value=val;};
+      set('f-nom',urlParams.get('nom'));
+      set('f-prenom',urlParams.get('prenom'));
+      set('f-adresse',urlParams.get('adresse'));
+      set('f-cp',urlParams.get('cp'));
+      set('f-ville',urlParams.get('ville'));
+      set('f-tel',urlParams.get('tel'));
+      set('f-email',urlParams.get('email'));
+      set('f-notes',urlParams.get('notes'));
+      // Set saison
+      const s=urlParams.get('saison')||'ouverture';
+      const tab=document.querySelector(`.stab.${s}`);
+      if(tab){setSaison(s,tab);}
+      // Set prestation
+      const presta=urlParams.get('presta');
+      if(presta){
+        const el=document.getElementById('op-'+presta)||document.getElementById('op-'+presta.replace('-','-'));
+        if(el&&!el.classList.contains('disabled'))selP(presta,el);
+      }
+      // Set week
+      const wk=parseInt(urlParams.get('wk'));
+      if(wk){
+        setTimeout(()=>{
+          const wb=document.querySelector(`.wb:not(.full)`);
+          const allWbs=document.querySelectorAll('.wb');
+          allWbs.forEach(b=>{
+            if(b.querySelector('.wn')?.textContent==='S'+wk)pickWk(wk,b);
+          });
+        },100);
+      }
+      // Clean URL
+      window.history.replaceState({},'',window.location.pathname);
+      toast('📥 Fiche client pré-remplie depuis le formulaire — vérifiez et enregistrez','ok');
+    },300);
+  }
 
   document.querySelectorAll('.ov').forEach(o=>{
     o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
