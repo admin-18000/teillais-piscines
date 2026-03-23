@@ -1286,10 +1286,11 @@ function renderPlanning(){
         </div>`;
       sc.forEach(c=>{
         const pi=PRESTA[c.presta]||{};
+        const dblTech=c.doublureId?DB.techs.find(t=>t.id===c.doublureId):null;
         html+=`<div class="rcard ${pi.css||'simple'}" onclick="event.stopPropagation();showCM(${JSON.stringify(c.id)})">
           <span class="rx" onclick="event.stopPropagation();unplan(${JSON.stringify(c.id)})">×</span>
           <div class="rn">${c.nom} ${c.prenom.charAt(0)}.</div>
-          <div class="rt">${pi.lbl||''}</div>
+          <div class="rt">${pi.lbl||''}${dblTech?` <span style="color:${dblTech.color};font-size:9px">+${dblTech.nom.split(' ')[0]}</span>`:''}</div>
           <div class="rc">${c.ville} · ${c.cp.substring(0,2)} · ${pi.h||1}h</div>
         </div>`;
       });
@@ -1566,8 +1567,19 @@ function findBestSlot(client, wks, preferWk){
   const pi=PRESTA[client.presta]||{h:1,techs:1};
   const cp=client.cp||'18000';
   let best=null;
-  
-  // Priorité : semaines autour de la semaine demandée (±2)
+
+  // Score combiné : charge journée (prioritaire) + proximité géo (tiebreaker)
+  // Permet de répartir sur tous les jours avant de regrouper géographiquement
+  function slotScore(wk,d,techId){
+    const charge=slotH(wk,d,techId); // heures déjà utilisées ce jour
+    const geo=techGeoScore(wk,d,techId,cp); // distance moyenne aux clients existants
+    // Normaliser : charge pèse 60%, geo 40%
+    // Si le slot est vide (geo=999), on lui donne quand même une chance
+    const geoNorm=geo>=999?50:geo; // cap à 50km si vide
+    return charge*10 + geoNorm*0.4;
+  }
+
+  // Semaines prioritaires : d'abord celles proches de preferWk
   const wksSorted=[...wks].sort((a,b)=>{
     const da=Math.abs(a.num-(preferWk||a.num));
     const db=Math.abs(b.num-(preferWk||b.num));
@@ -1575,48 +1587,52 @@ function findBestSlot(client, wks, preferWk){
   });
 
   for(const wk of wksSorted){
-    // Ne pas aller trop loin de la semaine souhaitée au premier tour
     if(preferWk&&Math.abs(wk.num-preferWk)>3)continue;
     for(let d=0;d<5;d++){
       if(pi.needsDoublure){
+        // Niv.2 : Tech principal (Tech1 ou Tech2) + Tech3 doublure obligatoire
         const dbl=DB.techs[2];
-        if(!dbl||slotH(wk.num,d,dbl.id)+pi.h>MAX_H)continue;
-        const mn=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
-        if(!mn.length)continue;
-        const scored=mn.map(t=>({t,s:techGeoScore(wk.num,d,t.id,cp)})).sort((a,b)=>a.s-b.s);
+        if(!dbl)continue;
+        if(slotH(wk.num,d,dbl.id)+pi.h>MAX_H)continue;
+        const mains=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
+        if(!mains.length)continue;
+        // Choisir le tech principal avec le meilleur score combiné
+        const scored=mains.map(t=>({t,s:slotScore(wk.num,d,t.id)})).sort((a,b)=>a.s-b.s);
         const score=scored[0].s;
         const isSuggested=preferWk&&wk.num!==preferWk;
-        if(!best||score<best.score)best={wk:wk.num,day:d,techId:scored[0].t.id,doublureId:dbl.id,score,isSuggested};
+        if(!best||score<best.score)
+          best={wk:wk.num,day:d,techId:scored[0].t.id,doublureId:dbl.id,score,isSuggested};
       } else {
-        // Choisir le tech dont la tournée du jour est déjà la plus proche géo
-        const avail=DB.techs.filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
-        if(!avail.length)continue;
-        // Parmi les techs disponibles, prendre celui dont la zone du jour est la plus proche
-        const scored=avail.map(t=>({t,s:techGeoScore(wk.num,d,t.id,cp)})).sort((a,b)=>a.s-b.s);
-        const best_t=scored[0];
+        // Prestation simple : Tech1 ou Tech2, séparément
+        // Chaque tech a SA tournée — on ne les mélange pas sur le même jour sauf si nécessaire
+        const mains=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
+        if(!mains.length)continue;
+        const scored=mains.map(t=>({t,s:slotScore(wk.num,d,t.id)})).sort((a,b)=>a.s-b.s);
         const isSuggested=preferWk&&wk.num!==preferWk;
-        if(!best||best_t.s<best.score)best={wk:wk.num,day:d,techId:best_t.t.id,score:best_t.s,isSuggested};
+        if(!best||scored[0].s<best.score)
+          best={wk:wk.num,day:d,techId:scored[0].t.id,score:scored[0].s,isSuggested};
       }
     }
   }
-  // Si rien trouvé dans ±3 semaines, chercher partout
+
+  // Fallback : chercher partout si rien trouvé dans ±3 semaines
   if(!best){
     for(const wk of wks){
       for(let d=0;d<5;d++){
         if(pi.needsDoublure){
-          const doublure2=DB.techs[2];
-          if(!doublure2)continue;
-          if(!doublure2||slotH(wk.num,d,doublure2.id)+pi.h>MAX_H)continue;
-          const mains2=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
-          if(!mains2.length)continue;
-          const scored2=mains2.map(t=>({t,s:techGeoScore(wk.num,d,t.id,cp)})).sort((a,b)=>a.s-b.s);
-          const score2=scored2[0].s;
-          if(!best||score2<best.score)best={wk:wk.num,day:d,techId:scored2[0].t.id,doublureId:doublure2.id,score:score2,isSuggested:true};
+          const dbl=DB.techs[2];
+          if(!dbl||slotH(wk.num,d,dbl.id)+pi.h>MAX_H)continue;
+          const mains=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
+          if(!mains.length)continue;
+          const scored=mains.map(t=>({t,s:slotScore(wk.num,d,t.id)})).sort((a,b)=>a.s-b.s);
+          if(!best||scored[0].s<best.score)
+            best={wk:wk.num,day:d,techId:scored[0].t.id,doublureId:dbl.id,score:scored[0].s,isSuggested:true};
         } else {
-          const avail=DB.techs.filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
-          if(!avail.length)continue;
-          const scored=avail.map(t=>({t,s:techGeoScore(wk.num,d,t.id,cp)})).sort((a,b)=>a.s-b.s);
-          if(!best||scored[0].s<best.score)best={wk:wk.num,day:d,techId:scored[0].t.id,score:scored[0].s,isSuggested:true};
+          const mains=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
+          if(!mains.length)continue;
+          const scored=mains.map(t=>({t,s:slotScore(wk.num,d,t.id)})).sort((a,b)=>a.s-b.s);
+          if(!best||scored[0].s<best.score)
+            best={wk:wk.num,day:d,techId:scored[0].t.id,score:scored[0].s,isSuggested:true};
         }
       }
     }
@@ -1945,43 +1961,51 @@ document.addEventListener('DOMContentLoaded',()=>{
   // ── Handle incoming client from formulaire client ──
   const urlParams=new URLSearchParams(window.location.search);
   if(urlParams.get('nom')){
-    // Pre-fill the form and navigate to saisie
+    // Parse ALL params immediately before URL gets cleaned
+    const _nom=urlParams.get('nom')||'';
+    const _prenom=urlParams.get('prenom')||'';
+    const _adresse=urlParams.get('adresse')||'';
+    const _cp=urlParams.get('cp')||'';
+    const _ville=urlParams.get('ville')||'';
+    const _tel=urlParams.get('tel')||'';
+    const _email=urlParams.get('email')||'';
+    const _notes=urlParams.get('notes')||'';
+    const _presta=urlParams.get('presta')||'';
+    const _wk=parseInt(urlParams.get('wk'))||0;
+    const _saison=urlParams.get('saison')||'ouverture';
+    // Clean URL immediately
+    window.history.replaceState({},'',window.location.pathname);
+    // Apply after short delay to let app initialize
     setTimeout(()=>{
+      // 1. Navigate to saisie
       showV('saisie');updateMobileNav('saisie');
-      const set=(id,val)=>{const e=document.getElementById(id);if(e&&val)e.value=val;};
-      set('f-nom',urlParams.get('nom'));
-      set('f-prenom',urlParams.get('prenom'));
-      set('f-adresse',urlParams.get('adresse'));
-      set('f-cp',urlParams.get('cp'));
-      set('f-ville',urlParams.get('ville'));
-      set('f-tel',urlParams.get('tel'));
-      set('f-email',urlParams.get('email'));
-      set('f-notes',urlParams.get('notes'));
-      // Set saison
-      const s=urlParams.get('saison')||'ouverture';
-      const tab=document.querySelector(`.stab.${s}`);
-      if(tab){setSaison(s,tab);}
-      // Set prestation
-      const presta=urlParams.get('presta');
-      if(presta){
-        const el=document.getElementById('op-'+presta)||document.getElementById('op-'+presta.replace('-','-'));
-        if(el&&!el.classList.contains('disabled'))selP(presta,el);
+      // 2. Set saison FIRST (rebuilds form)
+      const tab=document.querySelector('.stab.'+_saison);
+      if(tab)setSaison(_saison,tab);
+      // 3. Fill text fields
+      const sv=(id,val)=>{const e=document.getElementById(id);if(e&&val)e.value=val;};
+      sv('f-nom',_nom);
+      sv('f-prenom',_prenom);
+      sv('f-adresse',_adresse);
+      sv('f-cp',_cp);
+      sv('f-ville',_ville);
+      sv('f-tel',_tel);
+      sv('f-email',_email);
+      sv('f-notes',_notes);
+      // 4. Set prestation AFTER saison (saison resets fP)
+      if(_presta){
+        const el=document.getElementById('op-'+_presta);
+        if(el&&!el.classList.contains('disabled'))selP(_presta,el);
       }
-      // Set week
-      const wk=parseInt(urlParams.get('wk'));
-      if(wk){
-        setTimeout(()=>{
-          const wb=document.querySelector(`.wb:not(.full)`);
-          const allWbs=document.querySelectorAll('.wb');
-          allWbs.forEach(b=>{
-            if(b.querySelector('.wn')?.textContent==='S'+wk)pickWk(wk,b);
-          });
-        },100);
+      // 5. Set week AFTER renderWkSel (saison triggers renderWkSel)
+      if(_wk){
+        document.querySelectorAll('.wb').forEach(b=>{
+          if(b.querySelector('.wn')&&b.querySelector('.wn').textContent==='S'+_wk)
+            pickWk(_wk,b);
+        });
       }
-      // Clean URL
-      window.history.replaceState({},'',window.location.pathname);
-      toast('📥 Fiche client pré-remplie depuis le formulaire — vérifiez et enregistrez','ok');
-    },300);
+      toast('📥 Fiche pré-remplie — vérifiez et cliquez Enregistrer','ok');
+    },400);
   }
 
   document.querySelectorAll('.ov').forEach(o=>{
