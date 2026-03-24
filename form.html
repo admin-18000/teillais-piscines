@@ -93,8 +93,8 @@ input:focus{border-color:#0057FF;background:#fff}
     <div class="card">
       <div class="ct">Disponibilites</div>
       <div class="cb">
-        <div class="conv" id="conv-box" onclick="togConv()">
-          <input type="checkbox" id="f-conv">
+        <div class="conv" id="conv-box" onclick="togConv(event)">
+          <input type="checkbox" id="f-conv" onchange="applyConv()">
           <div><div style="font-weight:700;font-size:14px">A votre convenance</div><div style="font-size:12px;color:#5A6478">Nous planifions au plus vite selon nos tournees</div></div>
         </div>
         <div id="wk-sec">
@@ -195,6 +195,20 @@ function buildOptions(){
   }
   ol.onclick=function(e){
     if(e.target.type==='number') return;
+    if(e.target.type==='checkbox') {
+      // checkbox was clicked directly - find parent opt div
+      var t=e.target.parentNode;
+      while(t&&t!==ol){
+        if(t.className&&t.className.indexOf('opt')>=0){
+          var id=t.getAttribute('data-id');
+          selOpts[id]=document.getElementById('opt-'+id).checked;
+          t.classList.toggle('sel',selOpts[id]);
+          break;
+        }
+        t=t.parentNode;
+      }
+      return;
+    }
     var t=e.target;
     while(t&&t!==ol){
       if(t.className&&t.className.indexOf('opt')>=0){
@@ -252,9 +266,14 @@ function togJour(day,period,el){
   selJours[day][period]=el.checked;
 }
 
-function togConv(){
+function togConv(e){
+  if(e&&e.target&&e.target.type==='checkbox') return; // let checkbox handle itself
   var cb=document.getElementById('f-conv');
   cb.checked=!cb.checked;
+  applyConv();
+}
+function applyConv(){
+  var cb=document.getElementById('f-conv');
   selConv=cb.checked;
   document.getElementById('conv-box').classList.toggle('sel',selConv);
   var ws=document.getElementById('wk-sec');
