@@ -1987,13 +1987,50 @@ function renderRoute(){
 }
 
 function printRoute(){
-  // Add print-specific CSS temporarily
-  const style=document.createElement('style');
-  style.id='print-style';
-  style.textContent='@media print{.sidebar,.hdr,.mobile-nav,.mob-hdr,#more-overlay{display:none!important;}.main{margin:0!important;padding:0!important;}.view{display:block!important;}.card{break-inside:avoid;page-break-inside:avoid;border:1px solid #ddd;margin-bottom:12px;}.ptitle{font-size:18px;font-weight:800;margin-bottom:8px;}}';
-  document.head.appendChild(style);
-  window.print();
-  setTimeout(()=>{const s=document.getElementById('print-style');if(s)s.remove();},1000);
+  // Open route content in a new clean window for printing
+  const routeContent=document.getElementById('route-content');
+  if(!routeContent||!routeContent.innerHTML.trim()||routeContent.innerHTML.includes('Aucune tournee')){
+    toast('Aucune tournee a imprimer — selectionnez un technicien et une semaine','err');
+    return;
+  }
+  const techSel=document.getElementById('rt-tech');
+  const wkSel=document.getElementById('rt-wk');
+  const techName=techSel&&techSel.options[techSel.selectedIndex]?techSel.options[techSel.selectedIndex].text:'Tous les techniciens';
+  const wkName=wkSel&&wkSel.options[wkSel.selectedIndex]?wkSel.options[wkSel.selectedIndex].text:'Toutes les semaines';
+  const y=DB.annee||new Date().getFullYear();
+  const win=window.open('','_blank','width=800,height=900');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">');
+  win.document.write('<title>Feuille de route — '+techName+' — '+wkName+'</title>');
+  win.document.write('<style>');
+  win.document.write('*{box-sizing:border-box;margin:0;padding:0}');
+  win.document.write('body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:16px}');
+  win.document.write('h1{font-size:18px;font-weight:800;color:#0057FF;margin-bottom:4px}');
+  win.document.write('h2{font-size:14px;font-weight:800;margin:14px 0 6px;padding-bottom:4px;border-bottom:2px solid #ddd}');
+  win.document.write('.card{border:1px solid #ddd;border-radius:8px;margin-bottom:12px;overflow:hidden;page-break-inside:avoid}');
+  win.document.write('.card-header{padding:10px 12px;font-weight:800;font-size:13px;background:#F1F5FB;border-bottom:1px solid #ddd}');
+  win.document.write('.card-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px}');
+  win.document.write('.stop{display:flex;gap:8px;padding:8px;background:#F8FAFC;border-radius:6px;border:1px solid #e2e8f0}');
+  win.document.write('.stop-num{font-size:16px;font-weight:800;color:#9CA3AF;min-width:22px;text-align:center}');
+  win.document.write('.stop-info{flex:1}');
+  win.document.write('.stop-name{font-weight:800;font-size:13px}');
+  win.document.write('.stop-addr{font-size:11px;color:#5A6478;margin-top:2px}');
+  win.document.write('.stop-meta{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}');
+  win.document.write('.tag{background:#EFF6FF;color:#1D4ED8;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700}');
+  win.document.write('.tag-green{background:#D1FAE5;color:#065F46}');
+  win.document.write('.tag-orange{background:#FEF3C7;color:#92400E}');
+  win.document.write('.retour{background:#F0FDF4;border:1px solid #A7F3D0;border-radius:6px;padding:8px;display:flex;gap:8px;align-items:center}');
+  win.document.write('@media print{body{padding:8px}.card{page-break-inside:avoid}button{display:none}}');
+  win.document.write('</style></head><body>');
+  win.document.write('<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">');
+  win.document.write('<div><h1>Teillais Piscines — Feuilles de route</h1>');
+  win.document.write('<div style="font-size:12px;color:#5A6478">'+techName+' · '+wkName+' · Saison '+y+'</div>');
+  win.document.write('<div style="font-size:11px;color:#9CA3AF;margin-top:2px">Imprimé le '+new Date().toLocaleDateString('fr-FR')+'</div></div>');
+  win.document.write('<button onclick="window.print()" style="background:#0057FF;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:13px">🖨️ Imprimer</button>');
+  win.document.write('</div>');
+  win.document.write(routeContent.innerHTML);
+  win.document.write('</body></html>');
+  win.document.close();
+  setTimeout(()=>win.print(),500);
 }
 
 
