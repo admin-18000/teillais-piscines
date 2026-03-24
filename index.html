@@ -1254,15 +1254,19 @@ function saveClient(){
   const tel=document.getElementById('f-tel').value.trim();
   const email2=document.getElementById('f-email').value.trim();
   const notes=document.getElementById('f-notes').value.trim();
+  // Search both planned and unplanned clients for duplicates
   const existing=DB.clients.find(c=>
-    c.saison===saison&&!c.planifie&&(
+    c.saison===saison&&(
       (c.nom===nom&&c.prenom===prenom)||
       (adresse&&c.adresse&&c.adresse===adresse)
     )
   );
   let savedClient;
   if(existing){
-    // Update existing non-planified client
+    const wasPlanned=existing.planifie;
+    const oldWk=existing.wkPl;
+    const oldDay=existing.jour;
+    // Update all fields
     existing.presta=fP;
     existing.opts={...fO,selQty:sq,remise};
     existing.wkSouh=fWks.length>0?Math.min(...fWks):fWk;
@@ -1271,10 +1275,18 @@ function saveClient(){
     existing.joursOk=fJours;
     existing.montant=+montant.toFixed(2);
     existing.tel=tel;existing.email=email2;
-    existing.notes=notes;existing.ville=ville;existing.cp=cp;
+    existing.adresse=adresse;
+    existing.notes=notes;existing.notesTech=(document.getElementById('f-notes-tech')?document.getElementById('f-notes-tech').value.trim():'');
+    existing.ville=ville;existing.cp=cp;
     existing.updatedAt=new Date().toISOString();
+    // If was planned: deplan so algo can re-place with new preferences
+    if(wasPlanned){
+      existing.planifie=false;existing.techId=null;existing.jour=null;existing.wkPl=null;existing.doublureId=null;
+      toast('&#9989; '+prenom+' '+nom+' mis a jour — deplanifie pour reoptimisation (etait S'+oldWk+' '+['Lun','Mar','Mer','Jeu','Ven'][oldDay]+')','warn');
+    } else {
+      toast('&#9989; '+prenom+' '+nom+' mis a jour (fiche existante)','ok');
+    }
     savedClient=existing;
-    toast('&#9989; '+prenom+' '+nom+' mis a jour (fiche existante)','ok');
   } else {
     const newC={
       id:Date.now()+Math.random(),saison,nom,prenom,
@@ -3064,7 +3076,20 @@ document.addEventListener('DOMContentLoaded',()=>{
         const fc=document.getElementById('f-convenance');
         if(fc){fc.checked=true;togConvenance(fc);}
       }
-      toast('📥 Fiche pré-remplie — vérifiez et cliquez Enregistrer','ok');
+      // Check if this client already exists (planned or not) and warn
+    const _existing=DB.clients.find(c=>
+      c.saison===(_saison||saison)&&(
+        (c.nom===_nom.toUpperCase()&&c.prenom===_prenom)||
+        (c.adresse&&_adresse&&c.adresse===_adresse)
+      )
+    );
+    if(_existing&&_existing.planifie){
+      toast('⚠ Ce client est déjà planifié S'+_existing.wkPl+' — la fiche sera mise à jour et déplanifiée si vous enregistrez','warn');
+    } else if(_existing){
+      toast('📥 Fiche existante rechargée — vérifiez et cliquez Enregistrer','ok');
+    } else {
+      toast('📥 Nouvelle fiche pré-remplie — vérifiez et cliquez Enregistrer','ok');
+    }
     },400);
   }
 
