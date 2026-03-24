@@ -19,30 +19,40 @@ body{font-family:-apple-system,Arial,sans-serif;background:#F1F5FB;color:#0F172A
 input[type=text],input[type=tel],input[type=email]{width:100%;padding:13px 14px;font-size:16px;border:1.5px solid #DDE3F0;border-radius:10px;background:#F1F5FB;font-family:inherit;color:#0F172A;outline:none}
 input:focus{border-color:#0057FF;background:#fff}
 .r2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.presta{border:2px solid #DDE3F0;border-radius:10px;padding:14px;cursor:pointer;margin-bottom:8px}
+.presta{border:2px solid #DDE3F0;border-radius:10px;padding:14px;cursor:pointer;margin-bottom:8px;transition:all .15s}
 .presta.sel{border-color:#0057FF;background:#EFF6FF}
 .pn{font-weight:700;font-size:14px}
 .pp{font-weight:800;color:#0057FF;margin-top:3px}
 .pd{font-size:12px;color:#5A6478;margin-top:3px}
-.opt{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid #DDE3F0;border-radius:9px;cursor:pointer;margin-bottom:6px}
+.opt{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid #DDE3F0;border-radius:9px;cursor:pointer;margin-bottom:6px;transition:all .15s}
 .opt.sel{border-color:#0057FF;background:#EFF6FF}
-.opt input[type=checkbox]{width:18px;height:18px;accent-color:#0057FF;flex-shrink:0}
+.opt input[type=checkbox]{width:18px;height:18px;accent-color:#0057FF;flex-shrink:0;pointer-events:none}
 .on{font-weight:700;font-size:13px}
 .od{font-size:11px;color:#5A6478;margin-top:1px}
 .weeks{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:8px}
-.week{border:1.5px solid #DDE3F0;border-radius:9px;padding:9px 4px;text-align:center;cursor:pointer;background:#F1F5FB}
+.week{border:1.5px solid #DDE3F0;border-radius:9px;padding:9px 4px;text-align:center;cursor:pointer;background:#F1F5FB;transition:all .15s}
 .week.sel{border-color:#0057FF;background:#0057FF;color:#fff}
 .week b{display:block;font-size:13px;font-weight:800}
 .week small{display:block;font-size:9px;margin-top:1px;opacity:.7}
-.conv{border:2px solid #DDE3F0;border-radius:10px;padding:13px;cursor:pointer;display:flex;align-items:center;gap:10px}
+.conv{border:2px solid #DDE3F0;border-radius:10px;padding:13px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .15s}
 .conv.sel{border-color:#0057FF;background:#EFF6FF}
-.conv input{width:18px;height:18px;accent-color:#0057FF;flex-shrink:0}
+.conv input{width:18px;height:18px;accent-color:#0057FF;flex-shrink:0;pointer-events:none}
 .jr{display:flex;align-items:center;gap:8px;padding:9px 10px;background:#F1F5FB;border-radius:9px;border:1px solid #DDE3F0}
 .jn{font-weight:700;font-size:13px;width:68px;flex-shrink:0}
 .dl{display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;font-size:12px;color:#5A6478}
 .dl input{width:15px;height:15px;accent-color:#0057FF}
 .btn{width:100%;background:linear-gradient(135deg,#0057FF,#3B82F6);color:#fff;border:none;border-radius:14px;padding:17px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:6px}
 .note{background:#F0FDF4;border:1px solid #A7F3D0;border-radius:10px;padding:12px 14px;font-size:13px;color:#065F46;line-height:1.5;margin-bottom:14px}
+.tarif-box{background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:2px solid #3B82F6;border-radius:12px;padding:14px 16px;margin-bottom:14px;display:none}
+.tarif-label{font-size:11px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:.5px}
+.tarif-montant{font-size:28px;font-weight:800;color:#1D4ED8;margin-top:2px}
+.tarif-detail{font-size:12px;color:#3B82F6;margin-top:4px;line-height:1.5}
+.remise-badge{display:inline-block;background:#059669;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:8px}
+.remise-box{background:#FFF7ED;border:1.5px solid #FCD34D;border-radius:10px;padding:12px 14px}
+.remise-box label{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700;font-size:13px}
+.remise-box input[type=checkbox]{width:18px;height:18px;accent-color:#059669;flex-shrink:0}
+.remise-info{font-size:12px;color:#92400E;margin-top:4px;margin-left:28px}
+.ville-hint{font-size:11px;color:#3B82F6;margin-top:4px;display:none}
 #done{display:none}
 .bi{font-size:56px;text-align:center;margin:24px 0 12px}
 .dt{font-size:22px;font-weight:800;text-align:center;margin-bottom:8px}
@@ -62,7 +72,17 @@ input:focus{border-color:#0057FF;background:#fff}
 </header>
 <div class="wrap">
   <div id="fv">
-    <div class="note">Remplissez ce formulaire. Nous vous contacterons pour confirmer votre creneau.</div>
+    <div class="note">
+      <div style="font-weight:800;font-size:14px;margin-bottom:6px">&#128075; Bienvenue chez Teillais Piscines</div>
+      Remplissez ce formulaire en 2 minutes. Vous recevrez notre confirmation sous 48h ouvrées.
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+        <span style="background:#A7F3D0;color:#065F46;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">&#49;&#65039;&#8419; Vous remplissez</span>
+        <span style="color:#065F46;font-size:11px;font-weight:700">&#10142;</span>
+        <span style="background:#A7F3D0;color:#065F46;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">&#50;&#65039;&#8419; Vous nous envoyez</span>
+        <span style="color:#065F46;font-size:11px;font-weight:700">&#10142;</span>
+        <span style="background:#A7F3D0;color:#065F46;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">&#51;&#65039;&#8419; Nous confirmons</span>
+      </div>
+    </div>
     <div class="card">
       <div class="ct">Vos coordonnees</div>
       <div class="cb">
@@ -72,7 +92,11 @@ input:focus{border-color:#0057FF;background:#fff}
         </div>
         <div><div class="lbl">Adresse *</div><input type="text" id="f-adresse" placeholder="12 rue des Lilas"></div>
         <div class="r2">
-          <div><div class="lbl">Code postal *</div><input type="text" id="f-cp" placeholder="18000" maxlength="5"></div>
+          <div>
+            <div class="lbl">Code postal *</div>
+            <input type="text" id="f-cp" placeholder="18000" maxlength="5" inputmode="numeric">
+            <div class="ville-hint" id="ville-hint"></div>
+          </div>
           <div><div class="lbl">Ville *</div><input type="text" id="f-ville" placeholder="Bourges"></div>
         </div>
         <div class="r2">
@@ -80,6 +104,10 @@ input:focus{border-color:#0057FF;background:#fff}
           <div><div class="lbl">Email</div><input type="email" id="f-email" placeholder="jean@exemple.fr"></div>
         </div>
         <div><div class="lbl">Notes</div><input type="text" id="f-notes" placeholder="Abri, chien, portail..."></div>
+        <div class="remise-box">
+          <label><input type="checkbox" id="f-remise" onchange="calcTarif()"> Client ayant achete une piscine Desjoyaux en 2025</label>
+          <div class="remise-info">Une remise de -15% sera appliquee sur la prestation principale</div>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -89,6 +117,11 @@ input:focus{border-color:#0057FF;background:#fff}
     <div class="card" id="options-card" style="display:none">
       <div class="ct">Options</div>
       <div class="cb" id="options-list"></div>
+    </div>
+    <div class="tarif-box" id="tarif-box">
+      <div class="tarif-label">Tarif estime</div>
+      <div class="tarif-montant" id="tarif-montant"></div>
+      <div class="tarif-detail" id="tarif-detail"></div>
     </div>
     <div class="card">
       <div class="ct">Disponibilites</div>
@@ -111,19 +144,47 @@ input:focus{border-color:#0057FF;background:#fff}
   </div>
   <div id="done">
     <div class="bi">&#9989;</div>
-    <div class="dt">Merci !</div>
-    <div class="ds">Envoyez-nous votre demande via les boutons ci-dessous.</div>
+    <div class="dt">Votre demande est prête !</div>
+    <div class="ds">Appuyez sur un bouton ci-dessous pour nous l'envoyer. Nous vous confirmerons votre créneau sous 48h ouvrées.</div>
     <div class="recap" id="recap-box"></div>
-    <a id="lien-sms" class="bc" style="background:linear-gradient(135deg,#059669,#10B981)" href="#">Envoyer par SMS</a>
-    <div class="hint">Votre appli SMS va s'ouvrir - appuyez sur Envoyer</div>
-    <a id="lien-email" class="bc" style="background:linear-gradient(135deg,#0057FF,#3B82F6)" href="#">Envoyer par email</a>
-    <div class="hint">Votre appli mail va s'ouvrir - appuyez sur Envoyer</div>
+    <a id="lien-sms" class="bc" style="background:linear-gradient(135deg,#059669,#10B981)" href="#">&#128172; Envoyer par SMS</a>
+    <div class="hint">Votre appli SMS va s'ouvrir — appuyez sur Envoyer</div>
+    <a id="lien-email" class="bc" style="background:linear-gradient(135deg,#0057FF,#3B82F6)" href="#">&#9993;&#65039; Envoyer par email</a>
+    <div class="hint">Votre appli mail va s'ouvrir — appuyez sur Envoyer</div>
+    <!-- Etapes suivantes -->
+    <div style="background:#fff;border:1px solid #DDE3F0;border-radius:12px;padding:16px;margin-top:6px">
+      <div style="font-size:11px;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">La suite &#128071;</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="background:#0057FF;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">1</div>
+          <div style="font-size:13px">Nous recevons votre demande et vérifions les disponibilités</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="background:#0057FF;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">2</div>
+          <div style="font-size:13px">Nous vous contactons sous <strong>48h ouvrées</strong> pour confirmer votre créneau</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="background:#059669;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">3</div>
+          <div style="font-size:13px">Le jour J, nos techniciens arrivent à l'heure convenue &#127946;</div>
+        </div>
+      </div>
+    </div>
+    <!-- Contact direct -->
+    <div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:12px;padding:14px 16px;margin-top:10px;text-align:center">
+      <div style="font-size:12px;color:#065F46;margin-bottom:6px">Une question urgente ?</div>
+      <a href="tel:+33666975529" style="display:inline-block;background:#059669;color:#fff;text-decoration:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:14px">&#128222; 06 66 97 55 29 — Melvin</a>
+    </div>
   </div>
 </div>
 <script>
 var selPresta=null, selOpts={}, selSem=[], selConv=false, selJours={};
 var mois=new Date().getMonth()+1;
 var saison=(mois>=9&&mois<=11)?'hivernage':'ouverture';
+
+var PRIX={
+  'simple':240,'complete':390,'active':195,'electro':40,'sel':17.5,
+  'hiv-simple':220,'hiv-complet':340
+};
 
 var POUV=[
   {id:'simple',nom:'Niveau 1 - Ouverture simple',prix:'240 euros',desc:'Remise en route - 1h - 1 technicien'},
@@ -143,9 +204,78 @@ var SOUV=[[13,'31/3-4/4'],[14,'7-11/4'],[15,'14-18/4'],[16,'21-25/4'],[17,'28/4-
 var SHIV=[[39,'22-26/9'],[40,'29/9-3/10'],[41,'6-10/10'],[42,'13-17/10'],[43,'20-24/10'],[44,'27-31/10'],[45,'3-7/11'],[46,'10-14/11'],[47,'17-21/11'],[48,'24-28/11']];
 var JNOMS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi'];
 
+// CP -> communes index (departements proches de Bourges + grands departements FR)
+var CP_VILLES={
+  '18000':'Bourges','18100':'Vierzon','18200':'Saint-Amand-Montrond','18110':'Argent-sur-Sauldre',
+  '18120':'Lere','18130':'Baugy','18140':'Saint-Just','18150':'La Guerche-sur-l\'Aubois',
+  '18160':'Lignieres','18170':'Aubigny-sur-Nere','18180':'Mehun-sur-Yevre','18190':'Neuilly-en-Sancerre',
+  '18210':'Saint-Hilaire-de-Court','18220':'Les Aix-d\'Angillon','18230':'Saint-Doulchard',
+  '18240':'Sainte-Solange','18250':'Henrichemont','18260':'Saint-Pierre-les-Etieux',
+  '18270':'Sancerre','18300':'Saint-Florent-sur-Cher','18320':'Charost','18330':'Coeur-de-France',
+  '18340':'Levet','18350':'Menetou-Couture','18360':'Rians','18370':'Chateauneuf-sur-Cher',
+  '18380':'La Chapelle-Saint-Ursin','18390':'Osmoy','18400':'Saint-Florent-sur-Cher',
+  '18410':'Argent-sur-Sauldre','18420':'Massay','18430':'Loye-sur-Arnon','18440':'Bruere-Allichamps',
+  '18450':'Foecy','18460':'Marseilles-les-Aubigny','18470':'Magny-Cours','18480':'Saint-Just',
+  '18490':'Morogues','18500':'Mehun-sur-Yevre','18510':'Mery-sur-Cher','18520':'Neuvy-sur-Barangeon',
+  '18530':'Charenton-du-Cher','18550':'Saint-Germain-du-Puy','18560':'Ivoy-le-Pre',
+  '18570':'La Chapelotte','18580':'Saint-Eloy-de-Gy','18590':'Saint-Georges-sur-la-Pree',
+  '18600':'Sancoins','18700':'Aubigny-sur-Nere','18800':'Mehun-sur-Yevre','75001':'Paris 1er',
+  '69001':'Lyon 1er','13001':'Marseille 1er','33000':'Bordeaux','31000':'Toulouse',
+  '06000':'Nice','59000':'Lille','67000':'Strasbourg','44000':'Nantes','34000':'Montpellier'
+};
+
 var prestations=saison==='hivernage'?PHIV:POUV;
 var semaines=saison==='hivernage'?SHIV:SOUV;
 var options=saison==='hivernage'?[]:OOUV;
+
+// VILLE AUTO depuis CP
+document.getElementById('f-cp').addEventListener('input', function(){
+  var cp=this.value.trim();
+  this.value=this.value.replace(/[^0-9]/g,'');
+  if(cp.length===5){
+    var v=CP_VILLES[cp];
+    if(v){
+      document.getElementById('f-ville').value=v;
+      document.getElementById('ville-loading').style.display='none';
+    } else {
+      document.getElementById('ville-loading').style.display='block';
+      document.getElementById('ville-loading').textContent='Code postal reconnu - entrez la ville manuellement';
+      setTimeout(function(){ document.getElementById('ville-loading').style.display='none'; }, 2000);
+    }
+  }
+});
+
+// CALCUL TARIF
+function calcTarif(){
+  if(!selPresta){ document.getElementById('tarif-box').style.display='none'; return; }
+  var base=PRIX[selPresta]||0;
+  if(!base){ document.getElementById('tarif-box').style.display='none'; return; }
+  var extras=0, details=[];
+  for(var k in selOpts){
+    if(selOpts[k]&&PRIX[k]){
+      var qty=1;
+      var qel=document.getElementById('qty-'+k);
+      if(qel) qty=parseInt(qel.value)||1;
+      extras+=PRIX[k]*qty;
+      for(var i=0;i<options.length;i++) if(options[i].id===k){ details.push(options[i].nom+(qty>1?' x'+qty:'')+' +'+Math.round(PRIX[k]*qty)+' euros'); }
+    }
+  }
+  var remise=document.getElementById('f-remise')&&document.getElementById('f-remise').checked;
+  var total=base+extras;
+  var remiseMontant=0;
+  if(remise){ remiseMontant=Math.round(base*0.15); total=total-remiseMontant; }
+  var box=document.getElementById('tarif-box');
+  var mont=document.getElementById('tarif-montant');
+  var det=document.getElementById('tarif-detail');
+  mont.innerHTML=total+' euros';
+  if(remise) mont.innerHTML+=' <span class="remise-badge">-15% applique</span>';
+  var detParts=[];
+  for(var i=0;i<prestations.length;i++) if(prestations[i].id===selPresta) detParts.push(prestations[i].nom+' '+base+' euros');
+  if(remise) detParts.push('Remise client Desjoyaux -'+remiseMontant+' euros');
+  detParts=detParts.concat(details);
+  det.textContent=detParts.join(' + ');
+  box.style.display='block';
+}
 
 function buildPrestations(){
   var pl=document.getElementById('presta-list');
@@ -153,10 +283,7 @@ function buildPrestations(){
     var p=prestations[i];
     var d=document.createElement('div');
     d.className='presta';
-    var h='<div class="pn">'+p.nom+'</div>';
-    h+='<div class="pp">'+p.prix+'</div>';
-    h+='<div class="pd">'+p.desc+'</div>';
-    d.innerHTML=h;
+    d.innerHTML='<div class="pn">'+p.nom+'</div><div class="pp">'+p.prix+'</div><div class="pd">'+p.desc+'</div>';
     d.setAttribute('data-id',p.id);
     pl.appendChild(d);
   }
@@ -169,6 +296,7 @@ function buildPrestations(){
         for(var i=0;i<all.length;i++) all[i].classList.remove('sel');
         t.classList.add('sel');
         if(saison!=='hivernage'&&options.length) document.getElementById('options-card').style.display='';
+        calcTarif();
         break;
       }
       t=t.parentNode;
@@ -186,7 +314,7 @@ function buildOptions(){
     d.setAttribute('data-id',o.id);
     var h='<input type="checkbox" id="opt-'+o.id+'">';
     h+='<div><div class="on">'+o.nom+' <span style="color:#0057FF">'+o.prix+'</span>';
-    if(o.qty) h+=' <input type="number" id="qty-'+o.id+'" min="1" max="20" value="1" onclick="event.stopPropagation()" style="width:50px;padding:4px;font-size:14px;border:1px solid #DDE3F0;border-radius:6px;margin-left:6px"> sac(s)';
+    if(o.qty) h+=' <input type="number" id="qty-'+o.id+'" min="1" max="20" value="1" onclick="event.stopPropagation()" onchange="calcTarif()" style="width:50px;padding:4px;font-size:14px;border:1px solid #DDE3F0;border-radius:6px;margin-left:6px"> sac(s)';
     h+='</div>';
     if(o.desc) h+='<div class="od">'+o.desc+'</div>';
     h+='</div>';
@@ -195,28 +323,15 @@ function buildOptions(){
   }
   ol.onclick=function(e){
     if(e.target.type==='number') return;
-    if(e.target.type==='checkbox') {
-      // checkbox was clicked directly - find parent opt div
-      var t=e.target.parentNode;
-      while(t&&t!==ol){
-        if(t.className&&t.className.indexOf('opt')>=0){
-          var id=t.getAttribute('data-id');
-          selOpts[id]=document.getElementById('opt-'+id).checked;
-          t.classList.toggle('sel',selOpts[id]);
-          break;
-        }
-        t=t.parentNode;
-      }
-      return;
-    }
     var t=e.target;
     while(t&&t!==ol){
       if(t.className&&t.className.indexOf('opt')>=0){
         var id=t.getAttribute('data-id');
         var cb=document.getElementById('opt-'+id);
-        cb.checked=!cb.checked;
+        if(e.target.type!=='checkbox') cb.checked=!cb.checked;
         selOpts[id]=cb.checked;
         t.classList.toggle('sel',cb.checked);
+        calcTarif();
         break;
       }
       t=t.parentNode;
@@ -267,7 +382,7 @@ function togJour(day,period,el){
 }
 
 function togConv(e){
-  if(e&&e.target&&e.target.type==='checkbox') return; // let checkbox handle itself
+  if(e&&e.target&&e.target.type==='checkbox') return;
   var cb=document.getElementById('f-conv');
   cb.checked=!cb.checked;
   applyConv();
@@ -293,9 +408,13 @@ function envoyer(){
   var tel=document.getElementById('f-tel').value.trim();
   var email=document.getElementById('f-email').value.trim();
   var notes=document.getElementById('f-notes').value.trim();
-  if(!nom||!prenom){alert('Nom et prenom obligatoires');return;}
-  if(!adresse||cp.length<5||!ville){alert('Adresse complete obligatoire');return;}
-  if(!selPresta){alert('Choisissez un type intervention');return;}
+  var remise=document.getElementById('f-remise').checked;
+  if(!nom||!prenom){alert('Nom et prénom obligatoires');return;}
+  if(!adresse||cp.length<5||!ville){alert('Adresse complète obligatoire (CP 5 chiffres)');return;}
+  if(!/^[0-9]{5}$/.test(cp)){alert('Code postal invalide (5 chiffres)');return;}
+  if(!selPresta){alert('Choisissez un type d&apos;intervention');return;}
+  if(tel&&tel.replace(/[\s().+-]/g,'').length>0&&tel.replace(/[\s().+-]/g,'').length<7){alert('Format telephone invalide');return;}
+  if(email&&email.indexOf('@')<1){alert('Format email invalide');return;}
   var prestaNom='';
   for(var i=0;i<prestations.length;i++) if(prestations[i].id===selPresta) prestaNom=prestations[i].nom+' ('+prestations[i].prix+')';
   var optsStr='';
@@ -319,6 +438,20 @@ function envoyer(){
       if(parts.length) joursStr+=JNOMS[d]+' '+parts.join('+')+'; ';
     }
   }
+  // Tarif estimé
+  var base=PRIX[selPresta]||0;
+  var extras=0;
+  for(var k in selOpts){
+    if(selOpts[k]&&PRIX[k]){
+      var qty=1;
+      var qel=document.getElementById('qty-'+k);
+      if(qel) qty=parseInt(qel.value)||1;
+      extras+=PRIX[k]*qty;
+    }
+  }
+  var total=base+extras;
+  if(remise) total=total-Math.round(base*0.15);
+
   var appUrl='https://admin-18000.github.io/teillais-piscines'
     +'?nom='+encodeURIComponent(nom)
     +'&prenom='+encodeURIComponent(prenom)
@@ -331,7 +464,9 @@ function envoyer(){
     +'&presta='+encodeURIComponent(selPresta)
     +(selSem.length?'&wks='+selSem.join(','):'')
     +(selConv?'&conv=1':'')
+    +(remise?'&remise=1':'')
     +'&saison='+saison;
+
   var sujet='Demande intervention - '+nom+' '+prenom+' - '+ville;
   var corps='Nouvelle demande Teillais Piscines\n\n'
     +'Nom : '+nom+' '+prenom+'\n'
@@ -341,20 +476,30 @@ function envoyer(){
     +(notes?'Notes : '+notes+'\n':'')
     +'\nIntervention : '+prestaNom+'\n'
     +(optsStr?'Options : '+optsStr+'\n':'')
+    +(remise?'Remise client Desjoyaux 2025 : -15%\n':'')
     +'Semaines : '+semStr+'\n'
     +(joursStr?'Jours : '+joursStr+'\n':'')
+    +'Tarif estime : '+total+' euros\n'
     +'\nLIEN APP :\n'+appUrl;
-  var sms=nom+' '+prenom+' - '+cp+' '+ville+' - '+prestaNom+' - '+semStr+(joursStr?' - '+joursStr:'')+' | '+appUrl;
+
+  var sms=nom+' '+prenom+' - '+cp+' '+ville+' - '+prestaNom
+    +(remise?' (-15%)':'')+' - '+total+' euros - '+semStr
+    +(joursStr?' - '+joursStr:'')+' | '+appUrl;
+
   document.getElementById('lien-sms').href='sms:+33666975529?body='+encodeURIComponent(sms);
   document.getElementById('lien-email').href='mailto:melvin@teillaispiscines.fr?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(corps);
+
   document.getElementById('recap-box').innerHTML=
     '<div class="rl">Client</div><div class="rv">'+nom+' '+prenom+'</div>'
     +'<div class="rl">Adresse</div><div class="rv">'+adresse+', '+cp+' '+ville+'</div>'
     +(tel?'<div class="rl">Tel</div><div class="rv">'+tel+'</div>':'')
     +'<div class="rl">Intervention</div><div class="rv">'+prestaNom+'</div>'
     +(optsStr?'<div class="rl">Options</div><div class="rv">'+optsStr+'</div>':'')
+    +(remise?'<div class="rl">Remise</div><div class="rv" style="color:#059669">-15% client Desjoyaux 2025</div>':'')
+    +'<div class="rl">Tarif estime</div><div class="rv" style="color:#0057FF;font-size:18px">'+total+' euros</div>'
     +'<div class="rl">Semaines</div><div class="rv">'+semStr+'</div>'
     +(joursStr?'<div class="rl">Jours</div><div class="rv">'+joursStr+'</div>':'');
+
   document.getElementById('fv').style.display='none';
   document.getElementById('done').style.display='block';
   window.scrollTo(0,0);

@@ -283,7 +283,7 @@ tr:last-child td{border-bottom:none}
 /* Toast */
 .tc{position:fixed;bottom:calc(var(--bnav-h) + env(safe-area-inset-bottom,0px) + 10px);left:12px;right:12px;z-index:999;display:flex;flex-direction:column;gap:6px;pointer-events:none}
 .toast{background:#111827;color:#fff;padding:13px 16px;border-radius:var(--rs);font-size:14px;font-weight:500;box-shadow:var(--shl);animation:sli .2s ease;pointer-events:all}
-.toast.ok{background:#064E3B;border-left:3px solid var(--G)}.toast.err{background:#7F1D1D;border-left:3px solid var(--R)}
+.toast.ok{background:#064E3B;border-left:3px solid var(--G)}.toast.err{background:#7F1D1D;border-left:3px solid var(--R)}.toast.warn{background:#78350F;border-left:3px solid #F59E0B}
 @keyframes sli{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
 /* Mode opératoire */
 .mo-step{display:flex;gap:10px;margin-bottom:12px;align-items:flex-start}
@@ -368,6 +368,9 @@ input[type="file"]{display:none}
   <div class="nav-lbl">Planning</div>
   <div class="ni" id="ni-planning" onclick="showV('planning');updateMobileNav('planning')"><span class="nicon">📅</span>Planning semaine</div>
   <div class="ni" id="ni-zones" onclick="showV('zones');updateMobileNav('zones')"><span class="nicon">🗺️</span>Zones géo</div>
+  <div class="ni" id="ni-route" onclick="showV('route');updateMobileNav('route')"><span class="nicon">🚗</span>Feuilles de route</div>
+  <div class="nav-lbl">Gestion</div>
+  <div class="ni" id="ni-finances" onclick="showV('finances');updateMobileNav('finances')"><span class="nicon">💰</span>Finances & Export</div>
   <div class="nav-lbl">Paramètres</div>
   <div class="ni" id="ni-techniciens" onclick="showV('techniciens');updateMobileNav('techniciens')"><span class="nicon">⚙️</span>Paramètres</div>
   <div class="ni" id="ni-aide" onclick="showV('aide');updateMobileNav('aide')"><span class="nicon">❓</span>Mode opératoire</div>
@@ -375,6 +378,33 @@ input[type="file"]{display:none}
 
 <!-- MAIN CONTENT -->
 <main class="main">
+
+<!-- FEUILLE DE ROUTE -->
+<div class="view" id="view-route">
+  <div class="ptitle">Feuilles de route</div>
+  <div class="psub">Ordre de passage optimise par technicien et par jour</div>
+  <div class="card">
+    <div class="ch"><div class="ct">Selectionner</div></div>
+    <div class="cb" style="gap:10px">
+      <div class="r2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;margin-bottom:6px">Technicien</div>
+          <select id="rt-tech" style="width:100%;padding:10px;border:1.5px solid var(--bdr);border-radius:10px;background:var(--bg);font-size:14px;font-family:inherit" onchange="renderRoute()">
+            <option value="">Tous</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;margin-bottom:6px">Semaine</div>
+          <select id="rt-wk" style="width:100%;padding:10px;border:1.5px solid var(--bdr);border-radius:10px;background:var(--bg);font-size:14px;font-family:inherit" onchange="renderRoute()">
+            <option value="">Toutes</option>
+          </select>
+        </div>
+      </div>
+      <button onclick="printRoute()" style="background:linear-gradient(135deg,#0057FF,#3B82F6);color:#fff;border:none;border-radius:10px;padding:12px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🖨️ Imprimer la feuille</button>
+    </div>
+  </div>
+  <div id="route-content"></div>
+</div>
 
 <!-- DASHBOARD -->
 <div class="view on" id="view-dashboard">
@@ -388,6 +418,7 @@ input[type="file"]{display:none}
     </div>
     <div class="sc c"><div class="l">CA estimé</div><div class="v" id="st-ca">0 €</div><div class="s">toutes prestations</div></div>
   </div>
+  <div id="dash-countdown"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" id="dash-grid">
     <div class="card">
       <div class="ch"><div class="ct">📊 Répartition prestations</div></div>
@@ -409,6 +440,13 @@ input[type="file"]{display:none}
   <div class="ptitle" id="s-title">Saisie client — Ouvertures</div>
   <div class="psub">Enregistrer la réponse au courrier · Saison <span id="s-year"></span></div>
   <div id="ahint" class="ahint ouv" style="display:none">💡 <span id="ahint-txt"></span></div>
+  <!-- Quick search existing clients -->
+  <div style="position:relative;margin-bottom:12px">
+    <input type="text" id="client-search" placeholder="🔍 Rechercher un client existant..." 
+      style="width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--bdr);border-radius:var(--rs);background:var(--bg2);font-family:inherit;color:var(--fg);outline:none"
+      oninput="searchExistingClients(this.value)" autocomplete="off">
+    <div id="client-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg2);border:1.5px solid var(--B);border-radius:var(--rs);z-index:100;max-height:200px;overflow-y:auto;box-shadow:var(--shl)"></div>
+  </div>
   <div class="card">
     <div class="ch"><div class="ct">👤 Informations client</div></div>
     <div class="cb">
@@ -420,7 +458,8 @@ input[type="file"]{display:none}
         <div class="fgrp"><label class="fl">Adresse</label><input class="fi" id="f-adresse" placeholder="12 rue des Lilas" autocomplete="street-address"></div>
         <div class="fgrp"><label class="fl">Ville *</label><input class="fi" id="f-ville" placeholder="Bourges" autocomplete="address-level2"></div>
         <div class="fgrp"><label class="fl">Code postal *</label><input class="fi" id="f-cp" placeholder="18000" maxlength="5" inputmode="numeric" autocomplete="postal-code"></div>
-        <div class="fgrp"><label class="fl">Notes internes</label><input class="fi" id="f-notes" placeholder="Abri, chien, portail, taille piscine…"></div>
+        <div class="fgrp"><label class="fl">Notes client</label><input class="fi" id="f-notes" placeholder="Abri, chien, portail, taille piscine…"></div>
+        <div class="fgrp"><label class="fl">Notes technicien</label><input class="fi" id="f-notes-tech" placeholder="Instructions spéciales pour le technicien…"></div>
       </div>
       <div class="remise-box">
         <input type="checkbox" id="f-remise" onchange="calcSum()" style="width:20px;height:20px;cursor:pointer;accent-color:#F59E0B;flex-shrink:0;margin-top:2px">
@@ -553,6 +592,11 @@ input[type="file"]{display:none}
     <button class="btn bs sm" onclick="jumpFirst()">→ 1ère sem. attente</button>
     <button class="btn bauto sm" onclick="autoWeek()">⚡ Auto sem.</button>
     <button class="btn bs sm" onclick="sortGeo()">📍 Trier zone</button>
+    <button class="btn bs sm" onclick="reoptimize()" title="Relancer l'algo sur les clients déjà planifiés cette semaine" style="border-color:#8B5CF6;color:#8B5CF6">🔄 Réoptimiser</button>
+    <button class="btn bs sm" onclick="unplanWeek()" title="Déplanifier tous les clients de cette semaine" style="border-color:#DC2626;color:#DC2626">🗑 Vider sem.</button>
+    <select id="pl-tech-filter" onchange="renderPlanning()" style="border:1.5px solid var(--bdr);border-radius:8px;padding:5px 8px;font-size:12px;background:var(--bg);color:var(--fg);cursor:pointer">
+      <option value="">Tous les techs</option>
+    </select>
     <span style="font-size:11.5px;color:var(--t2);margin-left:auto" id="pl-dates"></span>
   </div>
   <!-- Mobile: week pills -->
@@ -593,6 +637,19 @@ input[type="file"]{display:none}
 <div class="view" id="view-techniciens">
   <div class="ptitle">Paramètres</div>
   <div class="psub">Année, semaines, techniciens</div>
+  <div class="card" style="border:2px solid #3B82F6">
+    <div class="ch" style="background:#EFF6FF"><div class="ct" style="color:#1D4ED8">&#128279; Lien formulaire client</div></div>
+    <div class="cb">
+      <div style="font-size:13px;color:var(--t2)">Partagez ce lien à vos clients pour qu'ils remplissent leur demande.</div>
+      <div style="display:flex;gap:8px">
+        <input id="form-url-input" type="text" readonly value="https://admin-18000.github.io/teillais-piscines/form.html" style="flex:1;font-size:13px;background:var(--bg);border:1.5px solid var(--bdr);border-radius:8px;padding:10px">
+        <button onclick="copyFormUrl()" style="background:var(--B);color:#fff;border:none;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap">&#128203; Copier</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <a href="https://admin-18000.github.io/teillais-piscines/form.html" target="_blank" style="flex:1;text-align:center;background:var(--bg);color:var(--B);border:1.5px solid var(--B);border-radius:8px;padding:10px;font-size:13px;font-weight:700;text-decoration:none">&#128065;&#65039; Voir le formulaire</a>
+      </div>
+    </div>
+  </div>
   <div class="card">
     <div class="ch"><div class="ct">📅 Année de la saison</div></div>
     <div class="cb">
@@ -639,29 +696,76 @@ input[type="file"]{display:none}
 <div class="view" id="view-aide">
   <div class="ptitle">❓ Mode opératoire</div>
   <div class="psub">Guide complet d'utilisation · Teillais Piscines Desjoyaux</div>
+
+  <!-- RACCOURCIS CLAVIER -->
+  <div class="card">
+    <div class="ch"><div class="ct">⌨️ Raccourcis clavier</div></div>
+    <div class="cb">
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px;align-items:center">
+        <kbd style="background:var(--bg);border:1.5px solid var(--bdr);border-radius:6px;padding:3px 8px;font-family:monospace;font-weight:700">D</kbd><span>Tableau de bord</span>
+        <kbd style="background:var(--bg);border:1.5px solid var(--bdr);border-radius:6px;padding:3px 8px;font-family:monospace;font-weight:700">S</kbd><span>Saisie client</span>
+        <kbd style="background:var(--bg);border:1.5px solid var(--bdr);border-radius:6px;padding:3px 8px;font-family:monospace;font-weight:700">C</kbd><span>Clients</span>
+        <kbd style="background:var(--bg);border:1.5px solid var(--bdr);border-radius:6px;padding:3px 8px;font-family:monospace;font-weight:700">P</kbd><span>Planning semaine</span>
+        <kbd style="background:var(--bg);border:1.5px solid var(--bdr);border-radius:6px;padding:3px 8px;font-family:monospace;font-weight:700">Z</kbd><span>Zones géo</span>
+        <kbd style="background:var(--bg);border:1.5px solid var(--bdr);border-radius:6px;padding:3px 8px;font-family:monospace;font-weight:700">R</kbd><span>Feuilles de route</span>
+        <kbd style="background:var(--bg);border:1.5px solid var(--bdr);border-radius:6px;padding:3px 8px;font-family:monospace;font-weight:700">F</kbd><span>Finances &amp; Export</span>
+        <kbd style="background:var(--bg);border:1.5px solid var(--bdr);border-radius:6px;padding:3px 8px;font-family:monospace;font-weight:700">← →</kbd><span>Semaine précédente / suivante (sur Planning)</span>
+      </div>
+      <div style="font-size:12px;color:var(--t2);margin-top:8px">Les raccourcis sont désactivés quand vous tapez dans un champ texte.</div>
+    </div>
+  </div>
+
+  <!-- DÉMARRAGE RAPIDE -->
   <div class="card">
     <div class="ch"><div class="ct">🚀 Démarrage rapide</div></div>
     <div class="cb">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-        <span class="info-pill">💾 Sauvegarde auto</span><span class="info-pill">📅 Année modifiable</span>
-        <span class="info-pill">⚡ Auto-planification</span><span class="info-pill g">3 saisons</span><span class="info-pill o">Export / Import JSON</span>
+        <span class="info-pill">💾 Sauvegarde auto</span>
+        <span class="info-pill">📅 Année modifiable</span>
+        <span class="info-pill">⚡ Auto-planification</span>
+        <span class="info-pill g">3 saisons</span>
+        <span class="info-pill o">Export / Import JSON</span>
+        <span class="info-pill">⌨️ Raccourcis clavier</span>
+        <span class="info-pill">🔍 Recherche client</span>
+        <span class="info-pill">🔄 Réoptimisation</span>
+        <span class="info-pill">📄 Rapport de clôture</span>
+        <span class="info-pill">🚗 Feuilles de route</span>
+        <span class="info-pill">💰 Finances &amp; Export</span>
       </div>
       <div class="mo-step"><div class="mo-num">1</div><div class="mo-txt"><strong>Régler l'année</strong> → Onglet ⚙️ Paramètres : boutons − / + pour choisir l'année.</div></div>
-      <div class="mo-step"><div class="mo-num">2</div><div class="mo-txt"><strong>Nommer les techniciens</strong> → Onglet ⚙️ Paramètres.</div></div>
+      <div class="mo-step"><div class="mo-num">2</div><div class="mo-txt"><strong>Nommer les techniciens</strong> → Onglet ⚙️ Paramètres. Tech 3 = doublure Niv.2 uniquement, peut faire Niv.1 les autres jours.</div></div>
       <div class="mo-step"><div class="mo-num">3</div><div class="mo-txt"><strong>Choisir la saison</strong> → 🌊 Ouvertures · 🧴 Entretien · ❄️ Hivernages en haut.</div></div>
-      <div class="mo-step"><div class="mo-num">4</div><div class="mo-txt"><strong>Saisir les clients</strong> → ✏️ Saisie. Remplir nom, adresse, prestation, semaine souhaitée.</div></div>
-      <div class="mo-step"><div class="mo-num">5</div><div class="mo-txt"><strong>Planifier</strong> → Via 📅 Planning (cliquer un créneau) ou bouton ⚡ Auto-planif.</div></div>
-      <div class="mo-step"><div class="mo-num">6</div><div class="mo-txt"><strong>Tournées</strong> → 🗺️ Zones géo : itinéraire Google Maps départ/retour Bourges.</div></div>
+      <div class="mo-step"><div class="mo-num">4</div><div class="mo-txt"><strong>Saisir les clients</strong> → ✏️ Saisie. Recherchez un client existant avec la barre de recherche. Remplir nom, adresse, prestation, semaine(s) souhaitée(s), jours disponibles.</div></div>
+      <div class="mo-step"><div class="mo-num">5</div><div class="mo-txt"><strong>Planifier</strong> → Via 📅 Planning (cliquer un créneau) ou bouton ⚡ Auto-planif. Utilisez 🔄 Réoptimiser pour relancer l'algo sur une semaine déjà planifiée.</div></div>
+      <div class="mo-step"><div class="mo-num">6</div><div class="mo-txt"><strong>Feuilles de route</strong> → 🚗 Feuilles de route : ordre de passage optimisé, heures estimées, bouton Maps par client, imprimable.</div></div>
+      <div class="mo-step"><div class="mo-num">7</div><div class="mo-txt"><strong>SMS confirmation</strong> → Dans la fiche client planifié : bouton 💬 SMS pré-rédigé avec jour, heure et montant.</div></div>
+      <div class="mo-step"><div class="mo-num">8</div><div class="mo-txt"><strong>Finances &amp; Export</strong> → 💰 CA par prestation et technicien, détection doublons, export JSON (sauvegarde), CSV clients, rapport de clôture HTML.</div></div>
+      <div class="mo-step"><div class="mo-num">9</div><div class="mo-txt"><strong>Historique</strong> → Dans Finances, chargez une saison précédente pour la consulter ou la réutiliser.</div></div>
     </div>
   </div>
+
+  <!-- NOUVELLES FONCTIONNALITÉS -->
+  <div class="card" style="border:2px solid #0057FF">
+    <div class="ch" style="background:#EFF6FF"><div class="ct" style="color:#1D4ED8">✨ Nouvelles fonctionnalités 2026</div></div>
+    <div class="cb">
+      <div class="mo-step"><div class="mo-num" style="background:#0057FF">→</div><div class="mo-txt"><strong>Formulaire client intelligent</strong> · Ville auto depuis CP · Tarif estimé en temps réel · Remise -15% cochable · Multi-semaines · Jours/demi-journées disponibles · À votre convenance</div></div>
+      <div class="mo-step"><div class="mo-num" style="background:#059669">→</div><div class="mo-txt"><strong>Feuilles de route optimisées</strong> · Algorithme du plus proche voisin depuis Bourges · Heure d'arrivée estimée · Temps et distance par client · Bouton Maps · Imprimable</div></div>
+      <div class="mo-step"><div class="mo-num" style="background:#7C3AED">→</div><div class="mo-txt"><strong>Planning enrichi</strong> · Heure estimée sur chaque carte · Résumé journalier (clients, h, km) · Filtre par technicien · Réoptimiser une semaine · Vider une semaine · Taux de remplissage par semaine (code couleur)</div></div>
+      <div class="mo-step"><div class="mo-num" style="background:#D97706">→</div><div class="mo-txt"><strong>Alertes intelligentes</strong> · Avertissement 80% capacité · Alerte géo si client éloigné · Suggestions de regroupement géo dans le tableau de bord · Détection automatique des doublons</div></div>
+      <div class="mo-step"><div class="mo-num" style="background:#DC2626">→</div><div class="mo-txt"><strong>Gestion clients avancée</strong> · Recherche autocomplete · Mise à jour fiche (anti-doublon) · Badge "MIS À JOUR" · Filtre "Modifiés" · Notes technicien séparées · SMS confirmation pré-rédigé</div></div>
+      <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Données &amp; Export</strong> · Sauvegarde JSON par année/saison · Import JSON entre appareils · Export CSV · Rapport de clôture HTML · Historique des saisons précédentes · CA par prestation et technicien</div></div>
+    </div>
+  </div>
+
+  <!-- TARIFS PAR SAISON -->
   <div style="display:grid;grid-template-columns:1fr;gap:14px" id="aide-grid">
     <div class="card">
       <div class="ch"><div class="ct" style="color:var(--B)">🌊 Saison Ouvertures</div></div>
       <div class="cb">
-        <div class="mo-step"><div class="mo-num" style="background:var(--B)">→</div><div class="mo-txt"><strong>Niv.1 Simple</strong> · 240 € · 1h · 1 tech</div></div>
-        <div class="mo-step"><div class="mo-num" style="background:var(--B)">→</div><div class="mo-txt"><strong>Niv.2 Complète</strong> · 390 € · 2h · 2 tech</div></div>
-        <div class="mo-step"><div class="mo-num" style="background:var(--O)">→</div><div class="mo-txt"><strong>Active sous abri</strong> · +195 €</div></div>
-        <div class="mo-step"><div class="mo-num" style="background:var(--t3)">→</div><div class="mo-txt">Électrolyseur +40 € · Sel +17,50 €/sac · −15% acheteur N-1</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:var(--B)">→</div><div class="mo-txt"><strong>Niv.1 Simple</strong> · 240 € · 1h · 1 tech · Bleu sur planning</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:var(--B)">→</div><div class="mo-txt"><strong>Niv.2 Complète</strong> · 390 € · 2h · Tech principal + Tech 3 doublure · Jaune sur planning · 1 camion</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:var(--O)">→</div><div class="mo-txt"><strong>Active sous abri</strong> · +195 € · Vert sur planning</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:var(--t3)">→</div><div class="mo-txt">Électrolyseur/3en1 +40 € · Sel +17,50 €/sac · Nettoyage volets/bâches sur devis · −15% acheteur Desjoyaux N-1</div></div>
       </div>
     </div>
     <div class="card">
@@ -680,10 +784,17 @@ input[type="file"]{display:none}
         <div class="mo-step"><div class="mo-num" style="background:#059669">→</div><div class="mo-txt"><strong>Commande produits −15%</strong></div></div>
       </div>
     </div>
+    <div class="card">
+      <div class="ch"><div class="ct">🔧 Règles métier</div></div>
+      <div class="cb">
+        <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Tech 3 (doublure)</strong> · Obligatoire sur toutes les Niv.2 · Peut faire Niv.1 les jours sans Niv.2 · 1 camion pour Tech principal + Tech 3</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Capacité</strong> · 7h/technicien/jour · Départ et retour Bourges (18) · 1h pause incluse</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Algo priorité</strong> · Contraintes jour/heure → Regroupement Niv.2 → Zone géo → Charge journée</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Données</strong> · Sauvegarde locale (localStorage) · Export JSON pour transférer vers un autre appareil · Pas de synchronisation automatique multi-appareils</div></div>
+      </div>
+    </div>
   </div>
-</div>
 
-</main>
 
 <!-- BOTTOM NAV -->
 <nav class="bnav" id="bnav">
@@ -726,6 +837,7 @@ input[type="file"]{display:none}
     <div class="mh"><div class="mt" id="mc-ttl">Fiche client</div><button class="mx" onclick="closeM('m-client')">×</button></div>
     <div class="mb" id="mc-bdy"></div>
     <div class="mf">
+      <a id="mc-sms" href="#" style="display:none;background:linear-gradient(135deg,#059669,#10B981);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700">💬 SMS</a>
       <button class="btn bd sm" id="mc-del">🗑 Supprimer</button>
       <button class="btn bs" onclick="closeM('m-client')">Fermer</button>
     </div>
@@ -775,6 +887,7 @@ input[type="file"]{display:none}
 const DAYS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi'];
 const MAX_H=7;
 const LS_KEY='teillais_piscines_db';
+function lsKey(yr,sais){ return LS_KEY+'_'+(yr||DB.annee)+'_'+(sais||saison); }
 
 function buildWks(from,to,yr){
   const out=[];
@@ -856,7 +969,8 @@ function markDirty(){
 function autosave(){
   if(!_dirty)return;
   try{
-    localStorage.setItem(LS_KEY,JSON.stringify(DB));
+    localStorage.setItem(lsKey(),JSON.stringify(DB));
+    localStorage.setItem(LS_KEY,JSON.stringify(DB)); // legacy compat
     _dirty=false;
     const dot=document.getElementById('as-dot');
     if(dot)dot.className='autosave-dot';
@@ -864,8 +978,13 @@ function autosave(){
 }
 function loadFromLS(){
   try{
-    const raw=localStorage.getItem(LS_KEY);
-    if(raw){DB=JSON.parse(raw);return true;}
+    const yr=new Date().getFullYear();
+    // Try current year+season first, then legacy
+    const keys=[lsKey(yr,saison),lsKey(yr,'ouverture'),LS_KEY];
+    for(const k of keys){
+      const raw=localStorage.getItem(k);
+      if(raw){DB=JSON.parse(raw);return true;}
+    }
   }catch(e){}
   return false;
 }
@@ -957,7 +1076,7 @@ function setSaison(s,btn){
   updateBadges();
   const av=document.querySelector('.view.on');
   if(av){const id=av.id.replace('view-','');
-    const fn={clients:renderClients,planning:renderPlanning,zones:renderZones,dashboard:renderDash};
+    const fn={clients:renderClients,planning:renderPlanning,zones:renderZones,dashboard:renderDash,route:()=>{initRouteSelectors();renderRoute();},finances:renderFinances};
     if(fn[id])fn[id]();}
   if(typeof buildMobWkPills==='function')buildMobWkPills();
 }
@@ -986,15 +1105,29 @@ function renderWkSel(){
   const hcls=saison==='hivernage'?'hv':saison==='entretien'?'et':'';
   c.innerHTML=wks.map(w=>{
     const maxH=MAX_H*5*Math.min(DB.techs.filter((_,i)=>i<2).length,2);
-    const full=wkHours(w.num)>=maxH;
-    const selcls=fWk===w.num?('sel'+(hcls?' '+hcls:'')):'';
-    return`<div class="wb ${full?'full':''} ${selcls}" ${full?'':'onclick="pickWk('+w.num+',this)"'}>
-      <span class="wn">S${w.num}</span><span class="wd">${w.lbl}</span>
+    const usedH=wkHours(w.num);
+    const full=usedH>=maxH;
+    const pct=maxH>0?Math.round(usedH/maxH*100):0;
+    const selcls=(fWks&&fWks.includes(w.num))||fWk===w.num?('sel'+(hcls?' '+hcls:'')):'';
+    const capBorder=full?'border-color:#DC2626':pct>70?'border-color:#F59E0B':'';
+    const capBg=full?'background:#FEE2E2':pct>70?'background:#FFF7ED':'';
+    return`<div class="wb ${full?'full':''} ${selcls}" style="${capBorder};${capBg}" ${full?'':'onclick="pickWk('+w.num+',this)"'}>
+      <span class="wn">S${w.num}</span><span class="wd">${w.lbl}</span>${pct>0?'<span style="font-size:8px;display:block;color:'+(full?'#DC2626':pct>70?'#D97706':'var(--t3)')+'">'+pct+'%</span>':''}
     </div>`;
   }).join('');
   const isH=saison==='hivernage',isE=saison==='entretien';
   const ttl=document.getElementById('wk-ttl');
   if(ttl)ttl.textContent=isH?'📅 Semaine souhaitée — Hivernage':isE?'📅 Semaine souhaitée — Entretien':'📅 Semaine souhaitée — Ouverture';
+  // Auto-select closest future week if nothing selected
+  if(!fWk&&!fWks.length&&wks.length){
+    const today=new Date();
+    const nextWk=wks.find(w=>new Date(w.start)>=today)||wks[0];
+    if(nextWk&&document.getElementById('view-saisie')&&document.getElementById('view-saisie').classList.contains('on')){
+      // Don't auto-select, just highlight it
+      const nextEl=document.querySelector('.wb[onclick*="'+nextWk.num+'"]');
+      if(nextEl)nextEl.style.outline='2px dashed var(--B)';
+    }
+  }
   const hint=document.getElementById('wk-hint');
   if(hint)hint.textContent=isH?'💡 Hivernages : fin septembre → fin novembre (S39–S48).'
     :isE?'💡 Entretien : campagne avril-mai (S15–S20). Offre −15% valable jusqu\'au 16 mai.'
@@ -1101,31 +1234,55 @@ function saveClient(){
   if(fO['hiv-tac'])montant+=28.82;
   // Apply remise to base prestation price only
   if(remise&&p&&p.price>0)montant-=+(p.price*0.15).toFixed(2);
-  DB.clients.push({
-    id:Date.now()+Math.random(),saison,nom,prenom,
-    tel:document.getElementById('f-tel').value.trim(),
-    email:document.getElementById('f-email').value.trim(),
-    adresse:document.getElementById('f-adresse').value.trim(),
-    ville,cp,notes:document.getElementById('f-notes').value.trim(),
-    presta:fP,opts:{...fO,selQty:sq,remise},
-    wkSouh:fWks.length>0?Math.min(...fWks):fWk, // semaine principale (compat)
-    wksSouh:fWks,        // tableau de semaines souhaitées
-    convenance:fConvenance, // au plus vite
-    joursOk:fJours,      // [{day:0,am:true,pm:true}, ...]
-    montant:+montant.toFixed(2),
-    planifie:false,techId:null,jour:null,wkPl:null,
-    createdAt:new Date().toISOString()
-  });
+  // Check for existing client (same nom+prenom or same adresse) to UPDATE instead of duplicate
+  const adresse=document.getElementById('f-adresse').value.trim();
+  const tel=document.getElementById('f-tel').value.trim();
+  const email2=document.getElementById('f-email').value.trim();
+  const notes=document.getElementById('f-notes').value.trim();
+  const existing=DB.clients.find(c=>
+    c.saison===saison&&!c.planifie&&(
+      (c.nom===nom&&c.prenom===prenom)||
+      (adresse&&c.adresse&&c.adresse===adresse)
+    )
+  );
+  let savedClient;
+  if(existing){
+    // Update existing non-planified client
+    existing.presta=fP;
+    existing.opts={...fO,selQty:sq,remise};
+    existing.wkSouh=fWks.length>0?Math.min(...fWks):fWk;
+    existing.wksSouh=fWks;
+    existing.convenance=fConvenance;
+    existing.joursOk=fJours;
+    existing.montant=+montant.toFixed(2);
+    existing.tel=tel;existing.email=email2;
+    existing.notes=notes;existing.ville=ville;existing.cp=cp;
+    existing.updatedAt=new Date().toISOString();
+    savedClient=existing;
+    toast('&#9989; '+prenom+' '+nom+' mis a jour (fiche existante)','ok');
+  } else {
+    const newC={
+      id:Date.now()+Math.random(),saison,nom,prenom,
+      tel,email:email2,adresse,ville,cp,notes,
+      presta:fP,opts:{...fO,selQty:sq,remise},
+      wkSouh:fWks.length>0?Math.min(...fWks):fWk,
+      wksSouh:fWks,convenance:fConvenance,joursOk:fJours,
+      montant:+montant.toFixed(2),
+      planifie:false,techId:null,jour:null,wkPl:null,
+      createdAt:new Date().toISOString()
+    };
+    DB.clients.push(newC);
+    savedClient=newC;
+    toast('&#9989; '+prenom+' '+nom+' enregistre(e)','ok');
+  }
   markDirty();autosave();updateBadges();renderDash();
-  const savedClient=DB.clients[DB.clients.length-1];
-  toast(`✅ ${prenom} ${nom} enregistré(e)`,'ok');
   // Show smart slot suggestion
   setTimeout(()=>showSmartSuggestion(savedClient),600);
   resetForm();
 }
 
 function resetForm(){
-  ['f-nom','f-prenom','f-tel','f-email','f-adresse','f-ville','f-cp','f-notes']
+  ['f-nom','f-prenom','f-tel','f-email','f-adresse','f-ville','f-cp','f-notes','f-notes-tech']
     .forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   fP=null;fO={};fWk=null;fWks=[];fConvenance=false;fJours=[];
   const sq=document.getElementById('f-sel-qty');if(sq)sq.value=1;
@@ -1151,16 +1308,17 @@ function renderClients(){
   document.getElementById('cl-sub').textContent=
     isH?`Clients hivernage ${y}`:isE?`Clients entretien ${y}`:`Clients ouvertures ${y}`;
   const chips=isH
-    ?[['all','Tous'],['hiv-simple','Hiv. simple'],['hiv-complet','Hiv. complet'],['unplaced','⚠ Sans créneau'],['placed','✅ Planifiés']]
+    ?[['all','Tous'],['hiv-simple','Hiv. simple'],['hiv-complet','Hiv. complet'],['unplaced','⚠ Sans créneau'],['placed','✅ Planifiés'],['updated','🔄 Modifiés']]
     :isE
     ?[['all','Tous'],['ent-visite','Visite'],['ent-analyse','Analyse'],['ent-commande','Commande'],['unplaced','⚠ Sans créneau'],['placed','✅ Planifiés']]
-    :[['all','Tous'],['simple','Niv.1 Simple'],['complete','Niv.2 Complet'],['active','Active abri'],['unplaced','⚠ Sans créneau'],['placed','✅ Planifiés']];
+    :[['all','Tous'],['simple','Niv.1 Simple'],['complete','Niv.2 Complet'],['active','Active abri'],['unplaced','⚠ Sans créneau'],['placed','✅ Planifiés'],['updated','🔄 Modifiés']];
   document.getElementById('cl-chips').innerHTML=chips.map(([k,l])=>
     `<span class="chip ${k===clFilt?'on':''}" onclick="setFilt('${k}',this)">${l}</span>`).join('');
   let list=clSaison();
   if(clSrch){const q=clSrch.toLowerCase();list=list.filter(c=>(c.nom+c.prenom+c.ville+c.cp).toLowerCase().includes(q));}
   if(clFilt==='unplaced')list=list.filter(c=>!c.planifie);
   else if(clFilt==='placed')list=list.filter(c=>c.planifie);
+  else if(clFilt==='updated')list=list.filter(c=>!!c.updatedAt);
   else if(clFilt!=='all')list=list.filter(c=>c.presta===clFilt);
   // Mobile: cards / Desktop: table
   const isMobile = window.innerWidth < 769;
@@ -1180,7 +1338,7 @@ function renderClients(){
       const planColor=c.planifie?'#065F46':'#92400E';
       const planBg=c.planifie?'#D1FAE5':'#FEF3C7';
       const planTxt=c.planifie?`✅ S${c.wkPl} ${DAYS[c.jour]||''}`:'⏳ En attente';
-      const rem=c.opts?.remise?'<span class="bdg" style="background:#FFF7ED;color:#92400E;font-size:10px">−15%</span>':'';
+      const rem=c.opts&&c.opts.remise?'<span class="bdg" style="background:#FFF7ED;color:#92400E;font-size:10px">−15%</span>':'';
       return`<div class="cl-card" onclick="showCM(${JSON.stringify(c.id)})">
         <div class="cl-card-head">
           <div>
@@ -1215,9 +1373,9 @@ function renderClients(){
     const planBdg=c.planifie
       ?`<span class="bdg b-ok">✅ S${c.wkPl} ${DAYS[c.jour]||''}</span>`
       :`<span class="bdg b-no">⏳ Attente</span>`;
-    const rem=c.opts?.remise?'<span class="bdg" style="background:#FFF7ED;color:#92400E;margin-left:3px">−15%</span>':'';
+    const rem=c.opts&&c.opts.remise?'<span class="bdg" style="background:#FFF7ED;color:#92400E;margin-left:3px">−15%</span>':'';
     return`<tr>
-      <td><strong>${c.nom}</strong> ${c.prenom}${rem}</td>
+      <td><strong>${c.nom}</strong> ${c.prenom}${rem}${c.updatedAt?'<span style="background:#DBEAFE;color:#1D4ED8;font-size:9px;font-weight:700;border-radius:4px;padding:1px 5px;margin-left:6px">MIS À JOUR</span>':''}</td>
       <td>${c.ville}<br><span style="color:var(--t3);font-size:10.5px">${c.cp}</span></td>
       <td><span class="bdg b-${pi.css||'s'}">${pi.lbl||c.presta}</span></td>
       <td>${c.wkSouh?'S'+c.wkSouh:'<span style="color:var(--t3)">—</span>'}</td>
@@ -1248,13 +1406,30 @@ function showCM(id){
       <div><div class="fl">Email</div><div style="margin-top:3px;word-break:break-all">${c.email||'—'}</div></div>
       <div style="grid-column:1/-1"><div class="fl">Adresse</div><div style="margin-top:3px">${[c.adresse,c.cp,c.ville].filter(Boolean).join(' ')}</div></div>
       <div><div class="fl">Saison</div><div style="margin-top:3px">${{ouverture:'🌊 Ouverture',entretien:'🧴 Entretien',hivernage:'❄️ Hivernage'}[c.saison]||c.saison}</div></div>
-      <div><div class="fl">Prestation</div><div style="margin-top:3px"><span class="bdg b-${pi.css||'s'}">${pi.lbl||c.presta}</span>${c.opts?.remise?'<span class="bdg" style="background:#FFF7ED;color:#92400E;margin-left:4px">−15%</span>':''}</div></div>
+      <div><div class="fl">Prestation</div><div style="margin-top:3px"><span class="bdg b-${pi.css||'s'}">${pi.lbl||c.presta}</span>${c.opts&&c.opts.remise?'<span class="bdg" style="background:#FFF7ED;color:#92400E;margin-left:4px">−15%</span>':''}</div></div>
       <div><div class="fl">Montant</div><div style="margin-top:3px;font-family:-apple-system,'Segoe UI',BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-size:17px;font-weight:800;color:var(--B)">${c.montant.toFixed(2)} €</div></div>
       <div><div class="fl">Semaine souhaitée</div><div style="margin-top:3px">${c.wkSouh?'S'+c.wkSouh:'—'}</div></div>
-      <div><div class="fl">Planifié</div><div style="margin-top:3px">${c.planifie?`✅ S${c.wkPl} ${DAYS[c.jour]||''} — ${tech?.nom||''}`:'⏳ Non planifié'}</div></div>
-      ${c.notes?`<div style="grid-column:1/-1"><div class="fl">Notes</div><div style="margin-top:3px;background:var(--bg);padding:7px;border-radius:6px;font-size:12px">${c.notes}</div></div>`:''}
+      <div><div class="fl">Planifié</div><div style="margin-top:3px">${c.planifie?`✅ S${c.wkPl} ${DAYS[c.jour]||''} — ${tech?tech.nom:''}`:'⏳ Non planifié'}</div></div>
+      ${c.notes?`<div style="grid-column:1/-1"><div class="fl">Notes client</div><div style="margin-top:3px;background:var(--bg);padding:7px;border-radius:6px;font-size:12px">${c.notes}</div></div>`:''}
+      ${c.notesTech?`<div style="grid-column:1/-1"><div class="fl">Notes technicien</div><div style="margin-top:3px;background:#FFF7ED;padding:7px;border-radius:6px;font-size:12px;border-left:3px solid #F59E0B">${c.notesTech}</div></div>`:''}
     </div>`;
   document.getElementById('mc-del').onclick=()=>{delC(c.id);closeM('m-client');};
+
+  // SMS confirmation button
+  const smsBtn=document.getElementById('mc-sms');
+  if(smsBtn){
+    if(c.planifie&&c.tel){
+      const JOURS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi'];
+      const wkDates={13:'31 mars',14:'7 avril',15:'14 avril',16:'21 avril',17:'28 avril',18:'5 mai',19:'12 mai',20:'19 mai',21:'26 mai',22:'2 juin',23:'9 juin',24:'16 juin',25:'23 juin'};
+      const dateWk=wkDates[c.wkPl]||('S'+c.wkPl);
+      const smsText='Teillais Piscines - Bonjour '+c.prenom+', votre intervention '+(tech?tech.nom:'')+' est prevue le '+(JOURS[c.jour]||'')+' '+dateWk+'. Prestation : '+(pi.lbl||c.presta)+'. Tarif : '+c.montant.toFixed(2)+' euros. A bientot !';
+      smsBtn.href='sms:'+c.tel+'?body='+encodeURIComponent(smsText);
+      smsBtn.style.display='block';
+    } else {
+      smsBtn.style.display='none';
+    }
+  }
+
   document.getElementById('m-client').classList.add('open');
 }
 function delC(id){
@@ -1284,6 +1459,16 @@ function renderLegend(){
 
 function renderPlanning(){
   const isH=saison==='hivernage',isE=saison==='entretien';
+  // Update tech filter selector
+  const techFilter=document.getElementById('pl-tech-filter');
+  if(techFilter&&techFilter.options.length<=1){
+    DB.techs.forEach(t=>{
+      const o=document.createElement('option');
+      o.value=t.id;o.textContent=t.nom;
+      techFilter.appendChild(o);
+    });
+  }
+  const filterTechId=techFilter?parseInt(techFilter.value)||0:0;
   const y=DB.annee||new Date().getFullYear();
   const wks=getWks();
   // Ensure planWk is valid for current season
@@ -1306,6 +1491,8 @@ function renderPlanning(){
     html+=`<div class="ph ${hcls}">${DAYS[i]}<br><span style="font-family:-apple-system,'Segoe UI',BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:400;font-size:9.5px;opacity:.8">${dt}</span></div>`;
   });
   DB.techs.forEach(tech=>{
+    // Apply tech filter if selected
+    if(filterTechId&&tech.id!==filterTechId)return;
     html+=`<div class="ptech" style="border-left:3px solid ${tech.color}">
       <span style="color:${tech.color};font-weight:800;font-size:10px">${tech.nom.split(' ').slice(0,2).join(' ')}</span>
     </div>`;
@@ -1323,16 +1510,54 @@ function renderPlanning(){
       sc.forEach(c=>{
         const pi=PRESTA[c.presta]||{};
         const dblTech=c.doublureId?DB.techs.find(t=>t.id===c.doublureId):null;
+        // Estimate arrival time for this client in this slot
+        const slotClients=sc.slice(0,sc.indexOf(c));
+        let slotMin=8*60;
+        let prevCp2='18000';
+        slotClients.forEach(sc2=>{
+          const d2=geoDistance(prevCp2,sc2.cp||'18000');
+          slotMin+=Math.round(d2*1.4)+(PRESTA[sc2.presta]?.h||1)*60;
+          prevCp2=sc2.cp||'18000';
+        });
+        const arrD=geoDistance(prevCp2,c.cp||'18000');
+        slotMin+=Math.round(arrD*1.4);
+        const arrH=Math.floor(slotMin/60).toString().padStart(2,'0')+':'+((slotMin%60).toString().padStart(2,'0'));
+        const dblTech2=c.doublureId?DB.techs.find(t=>t.id===c.doublureId):null;
         html+=`<div class="rcard ${pi.css||'simple'}" onclick="event.stopPropagation();showCM(${JSON.stringify(c.id)})">
           <span class="rx" onclick="event.stopPropagation();unplan(${JSON.stringify(c.id)})">×</span>
           <div class="rn">${c.nom} ${c.prenom.charAt(0)}.</div>
-          <div class="rt">${pi.lbl||''}${dblTech?` <span style="color:${dblTech.color};font-size:9px">+${dblTech.nom.split(' ')[0]}</span>`:''}</div>
-          <div class="rc">${c.ville} · ${c.cp.substring(0,2)} · ${pi.h||1}h</div>
+          <div class="rt">${pi.lbl||''}${dblTech2?` <span style="color:${dblTech2.color};font-size:9px">+${dblTech2.nom.split(' ')[0]}</span>`:''}</div>
+          <div class="rc">${c.ville} · ${c.cp.substring(0,2)} · ${pi.h||1}h · <span style="color:var(--B);font-weight:700">${arrH}</span></div>
         </div>`;
       });
       html+='</div>';
     }
   });
+  // Add daily summary footer row
+  html+='<div class="ph" style="background:var(--bg2);font-size:10px;color:var(--t2)">Résumé</div>';
+  for(let di=0;di<5;di++){
+    const dayCls=clSaison().filter(c=>c.planifie&&c.wkPl===w&&c.jour===di);
+    const totalH=dayCls.reduce((s,c)=>s+(PRESTA[c.presta]&&PRESTA[c.presta].h?PRESTA[c.presta].h:1),0);
+    // Estimate total km for the day (all techs combined from Bourges)
+    let totalKm=0;
+    DB.techs.forEach(tech=>{
+      const tc=dayCls.filter(c=>c.techId===tech.id);
+      if(!tc.length)return;
+      const ordered=tc; // already in order
+      let prev='18000';
+      ordered.forEach(c=>{totalKm+=Math.round(geoDistance(prev,c.cp||'18000'));prev=c.cp||'18000';});
+      totalKm+=Math.round(geoDistance(prev,'18000')); // return
+    });
+    const hasClients=dayCls.length>0;
+    html+='<div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:6px;margin:2px;padding:6px 4px;font-size:10px;color:var(--t2);text-align:center">';
+    if(hasClients){
+      html+='<div style="font-weight:700;color:var(--fg)">'+dayCls.length+' client'+(dayCls.length>1?'s':'')+'</div>';
+      html+='<div>'+totalH+'h · ~'+totalKm+'km</div>';
+    } else {
+      html+='<div style="opacity:.4">—</div>';
+    }
+    html+='</div>';
+  }
   document.getElementById('pgrid').innerHTML=html;
   renderUnplaced();
   renderPlanningMobile();
@@ -1512,10 +1737,30 @@ function doAssign(){
   if(!cid)return toast('⚠ Choisir un client','err');
   const c=DB.clients.find(x=>x.id===cid);if(!c)return;
   const{wk,day,techId}=pendSlot;
-  if(slotH(wk,day,techId)+(PRESTA[c.presta]?.h||1)>MAX_H)return toast('⚠ Capacité insuffisante','err');
+  const pi=PRESTA[c.presta]||{h:1};
+  const currentH=slotH(wk,day,techId);
+  const newH=currentH+(pi.h||1);
+  // Hard block at MAX_H
+  if(newH>MAX_H)return toast('⚠ Capacite insuffisante pour ce technicien','err');
+  // Warning at 80%
+  if(newH>MAX_H*0.8&&newH<=MAX_H){
+    toast('⚠ Journee chargee : '+newH+'h/'+MAX_H+'h','warn');
+  }
+  // Check geo alert: if this client is far from others in the same slot
+  const slotCls=clSaison().filter(x=>x.planifie&&x.wkPl===wk&&x.jour===day&&x.techId===techId);
+  if(slotCls.length>0){
+    const avgDist=slotCls.reduce((s,x)=>s+geoDistance(x.cp||'18000',c.cp||'18000'),0)/slotCls.length;
+    if(avgDist>50){
+      toast('📍 Attention : '+c.ville+' est loin des autres clients de cette journee (~'+Math.round(avgDist)+'km)','warn');
+    }
+  }
   c.planifie=true;c.techId=techId;c.jour=day;c.wkPl=wk;
+  // Handle doublure for Niv.2
+  if(pi.needsDoublure&&DB.techs[2]){
+    c.doublureId=DB.techs[2].id;
+  }
   closeM('m-slot');markDirty();autosave();updateBadges();renderPlanning();renderDash();
-  toast(`✅ ${c.prenom} ${c.nom} → ${DAYS[day]} S${wk}`,'ok');
+  toast('✅ '+c.prenom+' '+c.nom+' → '+DAYS[day]+' S'+wk,'ok');
 }
 function unplan(id){
   const c=DB.clients.find(x=>x.id===id);if(!c)return;
@@ -1538,6 +1783,9 @@ function renderUnplaced(){
         ${c.wkSouh?`<span class="itag">S${c.wkSouh}</span>`:''}
       </div>`;
     }).join('')+'</div>';
+  // Show geo suggestions
+  const geoDiv=document.getElementById('geo-suggestions-dash');
+  if(geoDiv) geoDiv.innerHTML=renderGeoSuggestions();
 }
 
 
@@ -1605,6 +1853,569 @@ function creneauOk(client, wk, day){
   return{ok:true,score:0};
 }
 
+
+/* ════ FEUILLE DE ROUTE ════ */
+function initRouteSelectors(){
+  const techSel=document.getElementById('rt-tech');
+  const wkSel=document.getElementById('rt-wk');
+  if(!techSel||!wkSel)return;
+  // Techs
+  techSel.innerHTML='<option value="">Tous</option>';
+  DB.techs.forEach(t=>{
+    const o=document.createElement('option');
+    o.value=t.id;o.textContent=t.nom;
+    techSel.appendChild(o);
+  });
+  // Weeks
+  const wks=getWks();
+  wkSel.innerHTML='<option value="">Toutes</option>';
+  wks.forEach(w=>{
+    const o=document.createElement('option');
+    o.value=w.num;o.textContent='S'+w.num;
+    wkSel.appendChild(o);
+  });
+}
+
+function optimiserOrdre(clients){
+  // Nearest neighbor algorithm depuis Bourges (18000)
+  if(clients.length<=1)return clients;
+  const BOURGES='18000';
+  const remaining=[...clients];
+  const route=[];
+  let current=BOURGES;
+  while(remaining.length>0){
+    let best=null,bestDist=Infinity,bestIdx=0;
+    remaining.forEach((c,i)=>{
+      const d=geoDistance(current,c.cp||'18000');
+      if(d<bestDist){bestDist=d;best=c;bestIdx=i;}
+    });
+    route.push(best);
+    current=best.cp||'18000';
+    remaining.splice(bestIdx,1);
+  }
+  return route;
+}
+
+function estimerHoraires(clients,depart){
+  // Depart de Bourges à 8h00 par defaut
+  const JOURS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi'];
+  let heure=8*60; // minutes depuis minuit
+  let result=[];
+  let prevCp='18000';
+  clients.forEach(c=>{
+    const pi=PRESTA[c.presta]||{h:1};
+    const distKm=geoDistance(prevCp,c.cp||'18000');
+    const trajetMin=Math.round(distKm*1.4); // ~1.4 min/km
+    heure+=trajetMin;
+    const hStr=Math.floor(heure/60).toString().padStart(2,'0')+':'+((heure%60).toString().padStart(2,'0'));
+    const hFin=heure+(pi.h||1)*60;
+    const hFinStr=Math.floor(hFin/60).toString().padStart(2,'0')+':'+((hFin%60).toString().padStart(2,'0'));
+    result.push({...c,heureArrivee:hStr,heureFin:hFinStr,trajetMin,distKm:Math.round(distKm)});
+    heure=hFin;
+    prevCp=c.cp||'18000';
+  });
+  return result;
+}
+
+function renderRoute(){
+  initRouteSelectors();
+  const techId=(document.getElementById('rt-tech')?document.getElementById('rt-tech').value:'')||'';
+  const wkNum=parseInt((document.getElementById('rt-wk')?document.getElementById('rt-wk').value:''))||0;
+  const JOURS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi'];
+  const cont=document.getElementById('route-content');
+  if(!cont)return;
+  const cls=clSaison().filter(c=>c.planifie);
+  if(!cls.length){cont.innerHTML='<div class="empty"><div class="ei">🚗</div><p>Aucun client planifie</p></div>';return;}
+
+  // Group by week -> day -> tech
+  const wks=wkNum?[wkNum]:[...new Set(cls.map(c=>c.wkPl))].sort((a,b)=>a-b);
+  let html='';
+
+  wks.forEach(wk=>{
+    const techs=techId?[DB.techs.find(t=>t.id===techId)].filter(Boolean):DB.techs;
+    techs.forEach(tech=>{
+      for(let d=0;d<5;d++){
+        let dayClients=cls.filter(c=>c.wkPl===wk&&c.jour===d&&(c.techId===tech.id||(c.doublureId&&c.doublureId===tech.id)));
+        if(!dayClients.length)continue;
+        // Optimise order
+        const ordered=optimiserOrdre(dayClients);
+        const withTimes=estimerHoraires(ordered);
+        const totalDist=withTimes.reduce((s,c)=>s+c.distKm,0);
+        const retourDist=Math.round(geoDistance(withTimes[withTimes.length-1]?.cp||'18000','18000'));
+        const totalH=withTimes.reduce((s,c)=>s+(PRESTA[c.presta]?.h||1),0);
+
+        html+='<div class="card" style="margin-bottom:14px">';
+        html+='<div class="ch" style="background:'+tech.color+'15;border-bottom:3px solid '+tech.color+'">';
+        html+='<div class="ct" style="color:'+tech.color+'">'+tech.nom+' — S'+wk+' '+JOURS[d]+'</div>';
+        html+='<span style="font-size:12px;color:var(--t2)">'+withTimes.length+' clients · '+totalH+'h · ~'+(totalDist+retourDist)+'km aller-retour</span>';
+        html+='</div><div class="cb" style="padding:12px;gap:8px">';
+
+        withTimes.forEach((c,i)=>{
+          const pi=PRESTA[c.presta]||{};
+          const mapsUrl='https://www.google.com/maps/search/'+encodeURIComponent(c.adresse+' '+c.cp+' '+c.ville);
+          html+='<div style="display:flex;gap:10px;padding:10px;background:var(--bg);border-radius:10px;border:1px solid var(--bdr)">';
+          html+='<div style="font-size:20px;font-weight:800;color:var(--t3);min-width:24px;text-align:center">'+(i+1)+'</div>';
+          html+='<div style="flex:1">';
+          html+='<div style="font-weight:800;font-size:14px">'+c.nom+' '+c.prenom+(c.updatedAt?'<span style="background:#DBEAFE;color:#1D4ED8;font-size:9px;font-weight:700;border-radius:4px;padding:1px 5px;margin-left:6px">MIS A JOUR</span>':'')+'</div>';
+          html+='<div style="font-size:12px;color:var(--t2);margin-top:2px">'+c.adresse+', '+c.cp+' '+c.ville+'</div>';
+          html+='<div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">';
+          html+='<span style="background:var(--bg2);border:1px solid var(--bdr);border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700">⏰ '+c.heureArrivee+'</span>';
+          html+='<span style="background:var(--bg2);border:1px solid var(--bdr);border-radius:6px;padding:2px 7px;font-size:11px">'+pi.lbl+'</span>';
+          if(i>0) html+='<span style="background:var(--bg2);border:1px solid var(--bdr);border-radius:6px;padding:2px 7px;font-size:11px;color:var(--t2)">🚗 '+c.trajetMin+'min ('+c.distKm+'km)</span>';
+          if(c.opts&&c.opts.notes) html+='<span style="background:#FFF7ED;border:1px solid #FCD34D;border-radius:6px;padding:2px 7px;font-size:11px">&#128203; '+c.opts.notes+'</span>';
+          if(c.notesTech) html+='<span style="background:#FFF7ED;border:1px solid #F59E0B;border-left:3px solid #F59E0B;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700">&#128295; '+c.notesTech+'</span>';
+          html+='</div>';
+          if(c.tel) html+='<div style="margin-top:4px"><a href="tel:'+c.tel+'" style="font-size:12px;color:var(--B);text-decoration:none">📞 '+c.tel+'</a></div>';
+          html+='</div>';
+          html+='<a href="'+mapsUrl+'" target="_blank" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:#EFF6FF;border-radius:8px;text-decoration:none;font-size:18px;flex-shrink:0">📍</a>';
+          html+='</div>';
+        });
+
+        // Retour Bourges
+        html+='<div style="display:flex;gap:10px;padding:10px;background:#F0FDF4;border-radius:10px;border:1px solid #A7F3D0">';
+        html+='<div style="font-size:20px;min-width:24px;text-align:center">🏠</div>';
+        html+='<div style="flex:1"><div style="font-weight:700;font-size:13px;color:#059669">Retour Bourges</div>';
+        html+='<div style="font-size:12px;color:var(--t2)">~'+retourDist+'km depuis dernier client</div></div></div>';
+
+        html+='</div></div>';
+      }
+    });
+  });
+
+  if(!html) html='<div class="empty"><div class="ei">🚗</div><p>Aucune tournee pour cette selection</p></div>';
+  cont.innerHTML=html;
+}
+
+function printRoute(){
+  // Add print-specific CSS temporarily
+  const style=document.createElement('style');
+  style.id='print-style';
+  style.textContent='@media print{.sidebar,.hdr,.mobile-nav,.mob-hdr,#more-overlay{display:none!important;}.main{margin:0!important;padding:0!important;}.view{display:block!important;}.card{break-inside:avoid;page-break-inside:avoid;border:1px solid #ddd;margin-bottom:12px;}.ptitle{font-size:18px;font-weight:800;margin-bottom:8px;}}';
+  document.head.appendChild(style);
+  window.print();
+  setTimeout(()=>{const s=document.getElementById('print-style');if(s)s.remove();},1000);
+}
+
+
+/* ════ FINANCES & EXPORT ════ */
+function renderFinances(){
+  const cls=clSaison();
+  const placed=cls.filter(c=>c.planifie);
+  const waiting=cls.filter(c=>!c.planifie);
+  const caTotal=placed.reduce((s,c)=>s+(c.montant||0),0);
+  const caWaiting=waiting.reduce((s,c)=>s+(c.montant||0),0);
+  const caByPresta={};
+  placed.forEach(c=>{
+    const key=PRESTA[c.presta]&&PRESTA[c.presta].lbl?PRESTA[c.presta].lbl:c.presta||'Autre';
+    caByPresta[key]=(caByPresta[key]||0)+(c.montant||0);
+  });
+  const caByTech={};
+  placed.forEach(c=>{
+    const t=DB.techs.find(x=>x.id===c.techId);
+    const k=t?t.nom:'?';
+    caByTech[k]=(caByTech[k]||0)+(c.montant||0);
+  });
+  const doublons=[];
+  cls.forEach((c,i)=>{
+    cls.slice(i+1).forEach(c2=>{
+      if((c.nom===c2.nom&&c.prenom===c2.prenom)||(c.adresse&&c.adresse===c2.adresse)){
+        doublons.push([c,c2]);
+      }
+    });
+  });
+  let h='';
+  // KPIs
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">';
+  h+='<div class="card" style="margin:0"><div class="cb" style="padding:14px">';
+  h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase">CA planifie</div>';
+  h+='<div style="font-size:28px;font-weight:800;color:var(--B)">'+caTotal.toFixed(0)+' &#8364;</div>';
+  h+='<div style="font-size:12px;color:var(--t2)">'+placed.length+' clients</div></div></div>';
+  h+='<div class="card" style="margin:0"><div class="cb" style="padding:14px">';
+  h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase">CA en attente</div>';
+  h+='<div style="font-size:28px;font-weight:800;color:#F59E0B">'+caWaiting.toFixed(0)+' &#8364;</div>';
+  h+='<div style="font-size:12px;color:var(--t2)">'+waiting.length+' clients</div></div></div>';
+  h+='</div>';
+  // CA par prestation
+  h+='<div class="card"><div class="ch"><div class="ct">CA par type d&#39;intervention</div></div><div class="cb" style="gap:8px">';
+  Object.entries(caByPresta).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{
+    const pct=caTotal>0?Math.round(v/caTotal*100):0;
+    h+='<div style="display:flex;align-items:center;gap:10px">';
+    h+='<div style="font-weight:700;font-size:13px;min-width:160px">'+k+'</div>';
+    h+='<div style="flex:1;background:var(--bg);border-radius:20px;height:8px;overflow:hidden">';
+    h+='<div style="width:'+pct+'%;height:100%;background:var(--B);border-radius:20px"></div></div>';
+    h+='<div style="font-weight:800;font-size:13px;min-width:70px;text-align:right">'+v.toFixed(0)+' &#8364;</div>';
+    h+='</div>';
+  });
+  h+='</div></div>';
+  // CA par technicien
+  h+='<div class="card"><div class="ch"><div class="ct">CA par technicien</div></div><div class="cb" style="gap:8px">';
+  DB.techs.forEach(t=>{
+    const v=caByTech[t.nom]||0;
+    const cnt=placed.filter(c=>c.techId===t.id).length;
+    h+='<div style="display:flex;align-items:center;gap:10px">';
+    h+='<div style="font-weight:700;font-size:13px;min-width:120px;color:'+t.color+'">'+t.nom+'</div>';
+    h+='<div style="font-size:12px;color:var(--t2);min-width:70px">'+cnt+' clients</div>';
+    h+='<div style="font-weight:800;font-size:13px;margin-left:auto">'+v.toFixed(0)+' &#8364;</div>';
+    h+='</div>';
+  });
+  h+='</div></div>';
+  // Doublons
+  if(doublons.length>0){
+    h+='<div class="card" style="border:2px solid #F59E0B"><div class="ch" style="background:#FFF7ED"><div class="ct" style="color:#D97706">&#9888;&#65039; Doublons potentiels ('+doublons.length+')</div></div><div class="cb" style="gap:8px">';
+    doublons.forEach(([a,b])=>{
+      h+='<div style="padding:8px;background:var(--bg);border-radius:8px;font-size:13px">';
+      h+='<span style="font-weight:700">'+a.nom+' '+a.prenom+'</span> ('+a.cp+') ';
+      h+='et <span style="font-weight:700">'+b.nom+' '+b.prenom+'</span> ('+b.cp+')';
+      h+='</div>';
+    });
+    h+='</div></div>';
+  }
+  // Export
+  h+='<div class="card"><div class="ch"><div class="ct">Export &amp; Sauvegarde</div></div><div class="cb" style="gap:10px">';
+  h+='<button onclick="genererRapport()" style="width:100%;background:linear-gradient(135deg,#7C3AED,#8B5CF6);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">&#128203; Generer rapport de cloture (HTML)</button>';
+  h+='<div style="font-size:12px;color:var(--t2)">Rapport complet avec planning par semaine, liste non planifies, CA. Telechargeable et imprimable.</div>';
+  h+='<button onclick="exportJSON()" style="width:100%;background:linear-gradient(135deg,#059669,#10B981);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">&#128190; Exporter toutes les donnees (JSON)</button>';
+  h+='<div style="font-size:12px;color:var(--t2)">Telecharge un fichier de sauvegarde. Importez-le sur un autre appareil pour transferer vos donnees.</div>';
+  h+='<button onclick="document.getElementById(\'fin-import\').click()" style="width:100%;background:var(--bg);color:var(--fg);border:1.5px solid var(--bdr);border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">&#128194; Importer une sauvegarde JSON</button>';
+  h+='<input type="file" id="fin-import" accept=".json" style="display:none" onchange="importJSON(this)">';
+  h+='<button onclick="exportCSV()" style="width:100%;background:var(--bg);color:var(--fg);border:1.5px solid var(--bdr);border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">&#128202; Exporter clients en CSV</button>';
+  h+='</div></div>';
+  // Historique
+  const histHtml=renderHistorique();
+  if(histHtml){
+    h+='<div class="card"><div class="ch"><div class="ct">&#128218; Historique des saisons</div></div><div class="cb" style="gap:8px">'+histHtml+'</div></div>';
+  }
+  document.getElementById('fin-content').innerHTML=h;
+}
+
+function exportJSON(){
+  const data=JSON.stringify(DB,null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  const y=DB.annee||new Date().getFullYear();
+  a.download='teillais-piscines-'+saison+'-'+y+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('💾 Sauvegarde exportee','ok');
+}
+
+function importJSON(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.clients||!Array.isArray(data.clients)){
+        toast('Fichier invalide','err');return;
+      }
+      if(confirm('Importer ces donnees ? Les donnees actuelles seront remplacees.')){
+        Object.assign(DB,data);
+        markDirty();autosave();
+        renderDash();updateBadges();
+        toast('✅ '+data.clients.length+' clients importes','ok');
+        renderFinances();
+      }
+    }catch(err){
+      toast('Erreur lecture fichier','err');
+    }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+function exportCSV(){
+  const cls=clSaison();
+  const header='Nom,Prenom,Adresse,CP,Ville,Tel,Email,Prestation,Semaine,Statut,Technicien,Montant';
+  const rows=cls.map(c=>{
+    const t=DB.techs.find(x=>x.id===c.techId);
+    return [
+      c.nom,c.prenom,
+      '"'+(c.adresse||'').replace(/"/g,'')+'"',
+      c.cp,c.ville,
+      c.tel||'',c.email||'',
+      c.presta,
+      c.wkPl?'S'+c.wkPl:(c.wkSouh?'S'+c.wkSouh+' (souh)':''),
+      c.planifie?'Planifie':'En attente',
+      t?t.nom:'',
+      (c.montant||0).toFixed(2)
+    ].join(',');
+  });
+  const csv=[header].concat(rows).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='teillais-clients-'+saison+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('📊 CSV exporte','ok');
+}
+
+
+/* ════ HISTORIQUE SAISONS ════ */
+function getHistoryKeys(){
+  const keys=[];
+  for(let y=new Date().getFullYear();y>=2020;y--){
+    ['ouverture','hivernage','entretien'].forEach(s=>{
+      const k=LS_KEY+'_'+y+'_'+s;
+      try{
+        if(localStorage.getItem(k)) keys.push({key:k,annee:y,saison:s});
+      }catch(e){}
+    });
+  }
+  return keys;
+}
+
+function renderHistorique(){
+  const hkeys=getHistoryKeys();
+  if(!hkeys.length) return '<div style="font-size:13px;color:var(--t2);padding:8px">Aucun historique disponible</div>';
+
+  let h='';
+  hkeys.forEach(({key,annee,saison:s})=>{
+    try{
+      const data=JSON.parse(localStorage.getItem(key)||'{}');
+      const cls=data.clients||[];
+      const placed=cls.filter(c=>c.planifie);
+      const ca=placed.reduce((sum,c)=>sum+(c.montant||0),0);
+      const icon=s==='hivernage'?'&#10052;':s==='entretien'?'&#129754;':'&#127946;';
+      const label=s==='hivernage'?'Hivernages':s==='entretien'?'Entretien':'Ouvertures';
+      h+='<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg);border-radius:9px;border:1px solid var(--bdr)">';
+      h+='<div style="font-size:22px">'+icon+'</div>';
+      h+='<div style="flex:1">';
+      h+='<div style="font-weight:700;font-size:13px">'+label+' '+annee+'</div>';
+      h+='<div style="font-size:12px;color:var(--t2)">'+placed.length+' clients planifies &bull; '+ca.toFixed(0)+' &#8364;</div>';
+      h+='</div>';
+      h+='<button onclick="chargerSaison(\''+key+'\')" style="background:var(--B);color:#fff;border:none;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer">Charger</button>';
+      h+='</div>';
+    }catch(e){}
+  });
+  return h;
+}
+
+function chargerSaison(key){
+  if(!confirm('Charger cette saison ? Les donnees actuelles seront remplacees.')) return;
+  try{
+    const data=JSON.parse(localStorage.getItem(key)||'{}');
+    Object.assign(DB,data);
+    if(data.saison) saison=data.saison;
+    markDirty();autosave();updateBadges();
+    renderDash();renderClients();
+    toast('Saison chargee : '+data.clients.length+' clients','ok');
+    renderFinances();
+  }catch(e){
+    toast('Erreur chargement','err');
+  }
+}
+
+
+/* ════ GEO SUGGESTIONS ════ */
+function getGeoSuggestions(){
+  const cls=clSaison().filter(c=>!c.planifie);
+  if(cls.length<2) return [];
+  const suggestions=[];
+  const used=new Set();
+
+  cls.forEach((c,i)=>{
+    if(used.has(c.id)) return;
+    const nearby=cls.slice(i+1).filter(c2=>{
+      if(used.has(c2.id)) return false;
+      return geoDistance(c.cp||'18000',c2.cp||'18000')<15; // within 15km
+    });
+    if(nearby.length>0){
+      const group=[c,...nearby.slice(0,3)]; // max 4 per suggestion
+      suggestions.push(group);
+      group.forEach(x=>used.add(x.id));
+    }
+  });
+  return suggestions.slice(0,5); // max 5 suggestions
+}
+
+function renderGeoSuggestions(){
+  const sugg=getGeoSuggestions();
+  if(!sugg.length) return '';
+  let h='<div class="card" style="border:2px solid #3B82F6"><div class="ch" style="background:#EFF6FF">';
+  h+='<div class="ct" style="color:#1D4ED8">&#128204; Suggestions de regroupement geo ('+sugg.length+')</div></div>';
+  h+='<div class="cb" style="gap:8px">';
+  sugg.forEach((group,i)=>{
+    const villes=group.map(c=>c.ville).join(', ');
+    const maxDist=Math.max(...group.map((c,i)=>i===0?0:geoDistance(group[0].cp||'18000',c.cp||'18000')));
+    h+='<div style="padding:10px;background:var(--bg);border-radius:9px;border:1px solid var(--bdr)">';
+    h+='<div style="font-weight:700;font-size:13px;color:#1D4ED8">Groupe '+(i+1)+' — ~'+Math.round(maxDist)+'km max</div>';
+    h+='<div style="font-size:12px;color:var(--t2);margin-top:2px">'+villes+'</div>';
+    h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">';
+    group.forEach(c=>{
+      const pi=PRESTA[c.presta]||{};
+      h+='<span style="background:#DBEAFE;color:#1D4ED8;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">'+c.nom+' '+c.prenom.charAt(0)+'. ('+pi.lbl+')</span>';
+    });
+    h+='</div></div>';
+  });
+  h+='<div style="font-size:11px;color:var(--t2);padding:4px 0">L\'auto-planif tiendra compte de ces regroupements automatiquement.</div>';
+  h+='</div></div>';
+  return h;
+}
+
+function copyFormUrl(){
+  const inp=document.getElementById('form-url-input');
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(inp.value).then(()=>toast('&#128203; Lien copie !','ok'));
+  } else {
+    inp.select();document.execCommand('copy');
+    toast('&#128203; Lien copie !','ok');
+  }
+}
+
+function searchExistingClients(q){
+  const box=document.getElementById('client-suggestions');
+  if(!box)return;
+  if(!q||q.length<2){box.style.display='none';return;}
+  const matches=DB.clients.filter(c=>{
+    const search=(c.nom+' '+c.prenom+' '+c.ville+' '+c.cp).toLowerCase();
+    return search.includes(q.toLowerCase());
+  }).slice(0,6);
+  if(!matches.length){box.style.display='none';return;}
+  box.innerHTML=matches.map(c=>{
+    const pi=PRESTA[c.presta]||{};
+    const status=c.planifie?'&#9989; Planifie S'+c.wkPl:'&#9203; En attente';
+    return '<div onclick="fillFromExisting(\''+c.id+'\')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--bdr);font-size:13px" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
+      +'<div style="font-weight:700">'+c.nom+' '+c.prenom+'</div>'
+      +'<div style="font-size:11px;color:var(--t2)">'+c.ville+' '+c.cp+' · '+(pi.lbl||c.presta)+' · '+status+'</div>'
+      +'</div>';
+  }).join('');
+  box.style.display='block';
+}
+
+function fillFromExisting(id){
+  const c=DB.clients.find(x=>String(x.id)===String(id));
+  if(!c)return;
+  const sv=(eid,val)=>{const e=document.getElementById(eid);if(e&&val!==undefined)e.value=val;};
+  sv('f-nom',c.nom);sv('f-prenom',c.prenom);sv('f-adresse',c.adresse);
+  sv('f-ville',c.ville);sv('f-cp',c.cp);sv('f-tel',c.tel);sv('f-email',c.email);sv('f-notes',c.notes);
+  if(c.presta){const el=document.getElementById('op-'+c.presta);if(el&&!el.classList.contains('disabled'))selP(c.presta,el);}
+  const box=document.getElementById('client-suggestions');if(box)box.style.display='none';
+  const search=document.getElementById('client-search');if(search)search.value='';
+  toast('&#128196; Fiche '+c.prenom+' '+c.nom+' rechargee','ok');
+}
+
+// Close search on outside click
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#client-search')&&!e.target.closest('#client-suggestions')){
+    const b=document.getElementById('client-suggestions');
+    if(b)b.style.display='none';
+  }
+});
+
+/* ════ RÉOPTIMISER ════ */
+function reoptimize(){
+  const wk=planWk;
+  const cls=clSaison().filter(c=>c.planifie&&c.wkPl===wk);
+  if(!cls.length){toast('Aucun client planifie cette semaine','err');return;}
+  if(!confirm('Relancer l\'optimisation sur les '+cls.length+' clients de S'+wk+' ? Leurs créneaux seront recalculés.')){return;}
+  // Unplan all clients in this week
+  cls.forEach(c=>{c.planifie=false;c.techId=null;c.jour=null;c.wkPl=null;c.doublureId=null;});
+  // Re-run auto assign for this week only
+  const wks=getWks().filter(w=>w.num===wk);
+  const sorted=cls.sort((a,b)=>{
+    const contraA=(a.joursOk&&a.joursOk.length>0)?0:(a.wksSouh&&a.wksSouh.length>0)?1:a.convenance?3:2;
+    const contraB=(b.joursOk&&b.joursOk.length>0)?0:(b.wksSouh&&b.wksSouh.length>0)?1:b.convenance?3:2;
+    if(contraA!==contraB)return contraA-contraB;
+    return (PRESTA[b.presta]&&PRESTA[b.presta].needsDoublure?1:0)-(PRESTA[a.presta]&&PRESTA[a.presta].needsDoublure?1:0);
+  });
+  let placed=0;
+  sorted.forEach(c=>{
+    const best=findBestSlot(c,wks,wk);
+    if(best){
+      c.planifie=true;c.wkPl=best.wk;c.jour=best.day;c.techId=best.techId;
+      if(best.doublureId)c.doublureId=best.doublureId;
+      placed++;
+    }
+  });
+  markDirty();autosave();updateBadges();renderPlanning();renderDash();
+  toast('🔄 Réoptimisé : '+placed+'/'+cls.length+' clients replacés en S'+wk,'ok');
+}
+
+
+function unplanWeek(){
+  const wk=planWk;
+  const cls=clSaison().filter(c=>c.planifie&&c.wkPl===wk);
+  if(!cls.length){toast('Aucun client planifie en S'+wk,'err');return;}
+  if(!confirm('Déplanifier les '+cls.length+' clients de la semaine S'+wk+' ?')){return;}
+  cls.forEach(c=>{c.planifie=false;c.techId=null;c.jour=null;c.wkPl=null;c.doublureId=null;});
+  markDirty();autosave();updateBadges();renderPlanning();renderDash();
+  toast('🗑 '+cls.length+' clients déplanifiés de S'+wk,'ok');
+}
+
+function genererRapport(){
+  const cls=clSaison();
+  const placed=cls.filter(c=>c.planifie);
+  const waiting=cls.filter(c=>!c.planifie);
+  const caTotal=placed.reduce((s,c)=>s+(c.montant||0),0);
+  const y=DB.annee||new Date().getFullYear();
+  const saisonLbl=saison==='hivernage'?'Hivernages':saison==='entretien'?'Entretien':'Ouvertures';
+
+  // Group by week
+  const byWk={};
+  placed.forEach(c=>{
+    const k='S'+c.wkPl;
+    if(!byWk[k])byWk[k]=[];
+    byWk[k].push(c);
+  });
+
+  let h='<!DOCTYPE html><html><head><meta charset="UTF-8">';
+  h+='<title>Rapport '+saisonLbl+' '+y+'</title>';
+  h+='<style>body{font-family:Arial,sans-serif;max-width:800px;margin:20px auto;color:#111;font-size:13px}';
+  h+='h1{font-size:22px;color:#0057FF}h2{font-size:16px;color:#0057FF;margin-top:20px;border-bottom:2px solid #DDE3F0;padding-bottom:6px}';
+  h+='.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}';
+  h+='.kpi-box{border:1px solid #DDE3F0;border-radius:8px;padding:12px;text-align:center}';
+  h+='.kpi-val{font-size:24px;font-weight:800;color:#0057FF}.kpi-lbl{font-size:11px;color:#5A6478;margin-top:4px}';
+  h+='table{width:100%;border-collapse:collapse;margin-top:8px}th{background:#F1F5FB;padding:8px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase}';
+  h+='td{padding:8px;border-bottom:1px solid #DDE3F0;font-size:12px}';
+  h+='@media print{body{margin:10px}}</style></head><body>';
+  h+='<h1>Teillais Piscines — Rapport '+saisonLbl+' '+y+'</h1>';
+  h+='<p style="color:#5A6478">Genere le '+new Date().toLocaleDateString('fr-FR')+' à '+new Date().toLocaleTimeString('fr-FR')+'</p>';
+
+  h+='<div class="kpi">';
+  h+='<div class="kpi-box"><div class="kpi-val">'+cls.length+'</div><div class="kpi-lbl">Clients total</div></div>';
+  h+='<div class="kpi-box"><div class="kpi-val">'+placed.length+'</div><div class="kpi-lbl">Planifiés</div></div>';
+  h+='<div class="kpi-box"><div class="kpi-val">'+caTotal.toFixed(0)+' €</div><div class="kpi-lbl">CA estimé</div></div>';
+  h+='</div>';
+
+  // By week
+  h+='<h2>Planning par semaine</h2>';
+  Object.keys(byWk).sort().forEach(wk=>{
+    const wkCls=byWk[wk];
+    const wkCA=wkCls.reduce((s,c)=>s+(c.montant||0),0);
+    h+='<p style="font-weight:700;margin-top:12px">'+wk+' — '+wkCls.length+' clients — '+wkCA.toFixed(0)+' €</p>';
+    h+='<table><tr><th>Client</th><th>Ville</th><th>Prestation</th><th>Technicien</th><th>Montant</th></tr>';
+    wkCls.forEach(c=>{
+      const t=DB.techs.find(x=>x.id===c.techId);
+      const pi=PRESTA[c.presta]||{};
+      h+='<tr><td>'+c.nom+' '+c.prenom+'</td><td>'+c.ville+'</td><td>'+(pi.lbl||c.presta)+'</td><td>'+(t?t.nom:'')+'</td><td>'+c.montant.toFixed(2)+' €</td></tr>';
+    });
+    h+='</table>';
+  });
+
+  if(waiting.length){
+    h+='<h2>Clients non planifiés ('+waiting.length+')</h2>';
+    h+='<table><tr><th>Client</th><th>Ville</th><th>Prestation</th><th>Semaine souhaitée</th></tr>';
+    waiting.forEach(c=>{
+      const pi=PRESTA[c.presta]||{};
+      h+='<tr><td>'+c.nom+' '+c.prenom+'</td><td>'+c.ville+'</td><td>'+(pi.lbl||c.presta)+'</td><td>'+(c.wkSouh?'S'+c.wkSouh:'—')+'</td></tr>';
+    });
+    h+='</table>';
+  }
+
+  h+='</body></html>';
+
+  const blob=new Blob([h],{type:'text/html;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='rapport-'+saisonLbl+'-'+y+'.html';a.click();
+  URL.revokeObjectURL(url);
+  toast('📄 Rapport généré et téléchargé','ok');
+}
 /* ════ GEO ENGINE — distance par code postal ════
    Centroïdes approximatifs par CP (2 premiers chiffres = département)
    Coordonnées en degrés décimaux lat/lng
@@ -1773,7 +2584,7 @@ function showSmartSuggestion(client){
   } else {
     msg=`✅ Meilleur créneau : <strong>S${best.wk} ${dayName}</strong>`;
   }
-  msg+=` · <span style="color:${tech?.color||'var(--B)'};font-weight:700">${tech?.nom||''}</span>`;
+  msg+=` · <span style="color:${tech?.color||'var(--B)'};font-weight:700">${tech?tech.nom:''}</span>`;
   msg+=` · Score trajet : ${Math.round(best.score)} km moy.`;
   
   // Show suggestion toast + propose to assign directly
@@ -1796,7 +2607,7 @@ function assignDirect(clientId,wk,day,techId,doublureId){
   const pi=PRESTA[c.presta]||{};
   const tech=DB.techs.find(t=>t.id===techId);
   const doublure=doublureId?DB.techs.find(t=>t.id===doublureId):null;
-  const techStr=doublure?`${tech?.nom||''} + ${doublure.nom} (doublure)`:tech?.nom||'';
+  const techStr=doublure?`${tech?tech.nom:''} + ${doublure.nom} (doublure)`:tech?.nom||'';
   toast(`📌 ${c.prenom} ${c.nom} → ${['Lundi','Mardi','Mercredi','Jeudi','Vendredi'][day]} S${wk} · ${techStr}`,'ok');
 }
 
@@ -1880,6 +2691,12 @@ function renderZones(){
               <span style="font-size:11px;font-weight:700;color:${col};background:${col}18;padding:2px 7px;border-radius:10px">${zc.length} client${zc.length>1?'s':''}</span>
               <span style="font-size:11px;color:var(--t3)">📍 ~${distKm} km de Bourges</span>
               ${planned>0?`<span style="font-size:11px;color:#065F46;background:#D1FAE5;padding:2px 7px;border-radius:10px;font-weight:700">✅ ${planned} planifié${planned>1?'s':''}</span>`:''}
+              <span style="font-size:11px;color:var(--B);background:var(--bg);padding:2px 7px;border-radius:10px;font-weight:700">
+                ${zc.reduce((s,c)=>s+(c.montant||0),0).toFixed(0)} €
+              </span>
+              <span style="font-size:11px;color:var(--t2)">
+                ~${Math.round(distKm*2)} km A/R
+              </span>
             </div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
               ${zc.map(c=>{
@@ -1954,7 +2771,36 @@ function renderDash(){
       </div>`;
     }).join('');
   }
+  // Countdown: weeks remaining before season end
   const wks=getWks();
+  const today=new Date();
+  const futureWks=wks.filter(w=>{
+    const wkEnd=new Date(w.start);wkEnd.setDate(wkEnd.getDate()+6);
+    return wkEnd>=today;
+  });
+  const unplacedClients=clSaison().filter(c=>!c.planifie).length;
+  const cdDiv=document.getElementById('dash-countdown');
+  if(cdDiv&&futureWks.length>0){
+    const urgency=futureWks.length<=3?'var(--R)':futureWks.length<=5?'#F59E0B':'var(--G)';
+    cdDiv.innerHTML='<div class="card" style="border-left:4px solid '+urgency+';margin-bottom:14px">'
+      +'<div class="cb" style="padding:12px 16px">'
+      +'<div style="display:flex;align-items:center;gap:16px">'
+      +'<div style="text-align:center">'
+      +'<div style="font-size:36px;font-weight:800;color:'+urgency+'">'+futureWks.length+'</div>'
+      +'<div style="font-size:11px;color:var(--t2);font-weight:700;text-transform:uppercase">semaines restantes</div>'
+      +'</div>'
+      +'<div style="width:1px;background:var(--bdr);align-self:stretch"></div>'
+      +'<div style="flex:1">'
+      +(unplacedClients>0
+        ?'<div style="font-weight:700;font-size:14px;color:'+urgency+'">&#9203; '+unplacedClients+' client'+(unplacedClients>1?'s':'')+' non planifie'+(unplacedClients>1?'s':''+'</div>')
+        :'<div style="font-weight:700;font-size:14px;color:var(--G)">&#9989; Tous les clients sont planifies !</div>')
+      +'<div style="font-size:12px;color:var(--t2);margin-top:4px">Prochaine semaine : S'+futureWks[0].num+' ('+futureWks[0].lbl+')</div>'
+      +'</div>'
+      +'</div>'
+      +'</div></div>';
+  } else if(cdDiv){
+    cdDiv.innerHTML='';
+  }
   document.getElementById('d-wks').innerHTML='<div style="display:flex;gap:5px;flex-wrap:wrap">'+
     wks.map(wk=>{
       const cnt=all.filter(c=>c.planifie&&c.wkPl===wk.num).length;
@@ -2147,6 +2993,34 @@ document.addEventListener('DOMContentLoaded',()=>{
     },400);
   }
 
+
+/* ════ RACCOURCIS CLAVIER ════ */
+document.addEventListener('keydown',function(e){
+  // Don't fire if user is typing in an input
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT') return;
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  switch(e.key){
+    case 'd': case 'D': showV('dashboard');updateMobileNav('dashboard');break;
+    case 'c': case 'C': showV('clients');updateMobileNav('clients');break;
+    case 's': case 'S': showV('saisie');updateMobileNav('saisie');break;
+    case 'p': case 'P': showV('planning');updateMobileNav('planning');break;
+    case 'z': case 'Z': showV('zones');updateMobileNav('zones');break;
+    case 'r': case 'R': showV('route');initRouteSelectors();renderRoute();updateMobileNav('route');break;
+    case 'f': case 'F': showV('finances');renderFinances();updateMobileNav('finances');break;
+    case 'ArrowLeft':
+      if(document.getElementById('view-planning')&&document.getElementById('view-planning').classList.contains('on')){
+        const wks=getWks();const i=wks.findIndex(w=>w.num===planWk);
+        if(i>0){planWk=wks[i-1].num;renderPlanning();}
+      }
+      break;
+    case 'ArrowRight':
+      if(document.getElementById('view-planning')&&document.getElementById('view-planning').classList.contains('on')){
+        const wks=getWks();const i=wks.findIndex(w=>w.num===planWk);
+        if(i<wks.length-1){planWk=wks[i+1].num;renderPlanning();}
+      }
+      break;
+  }
+});
   document.querySelectorAll('.ov').forEach(o=>{
     o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
   });
