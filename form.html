@@ -17,21 +17,34 @@ body{font-family:-apple-system,'Segoe UI',Arial,sans-serif;background:#F1F5FB;co
 .card-title{padding:13px 16px;border-bottom:1px solid #DDE3F0;font-weight:800;font-size:14px}
 .card-body{padding:16px;display:flex;flex-direction:column;gap:12px}
 .label{font-size:11px;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
-input{width:100%;padding:13px 14px;font-size:16px;border:1.5px solid #DDE3F0;border-radius:10px;background:#F1F5FB;font-family:inherit;color:#0F172A;outline:none}
+input[type=text],input[type=tel],input[type=email],input[type=number]{width:100%;padding:13px 14px;font-size:16px;border:1.5px solid #DDE3F0;border-radius:10px;background:#F1F5FB;font-family:inherit;color:#0F172A;outline:none}
 input:focus{border-color:#0057FF;background:#fff}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.presta{border:2px solid #DDE3F0;border-radius:10px;padding:14px;cursor:pointer;margin-bottom:8px}
+.presta{border:2px solid #DDE3F0;border-radius:10px;padding:14px;cursor:pointer;margin-bottom:8px;transition:all .12s}
 .presta.sel{border-color:#0057FF;background:#EFF6FF}
 .presta-name{font-weight:700;font-size:14px}
 .presta-price{font-weight:800;color:#0057FF;margin-top:3px}
 .presta-desc{font-size:12px;color:#5A6478;margin-top:3px}
-.weeks{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
-.week{border:1.5px solid #DDE3F0;border-radius:9px;padding:9px 4px;text-align:center;cursor:pointer;background:#F1F5FB}
+.option-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid #DDE3F0;border-radius:9px;cursor:pointer}
+.option-item.sel{border-color:#0057FF;background:#EFF6FF}
+.option-item input[type=checkbox]{width:18px;height:18px;accent-color:#0057FF;flex-shrink:0}
+.option-name{font-weight:700;font-size:13px}
+.option-desc{font-size:11px;color:#5A6478;margin-top:1px}
+.weeks{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:8px}
+.week{border:1.5px solid #DDE3F0;border-radius:9px;padding:9px 4px;text-align:center;cursor:pointer;background:#F1F5FB;transition:all .12s}
 .week.sel{border-color:#0057FF;background:#0057FF;color:#fff}
 .week b{display:block;font-size:13px;font-weight:800}
 .week small{display:block;font-size:9px;margin-top:1px;opacity:.7}
+.convenance-box{border:2px solid #DDE3F0;border-radius:10px;padding:13px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .12s}
+.convenance-box.sel{border-color:#0057FF;background:#EFF6FF}
+.convenance-box input{width:18px;height:18px;accent-color:#0057FF;flex-shrink:0}
+.jour-row{display:flex;align-items:center;gap:8px;padding:9px 10px;background:#F1F5FB;border-radius:9px;border:1px solid #DDE3F0}
+.jour-name{font-weight:700;font-size:13px;width:68px;flex-shrink:0}
+.demi-label{display:flex;align-items:center;gap:5px;cursor:pointer;flex:1;font-size:12px;color:#5A6478}
+.demi-label input{width:15px;height:15px;accent-color:#0057FF}
 .btn-main{width:100%;background:linear-gradient(135deg,#0057FF,#3B82F6);color:#fff;border:none;border-radius:14px;padding:17px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:6px}
 .note{background:#F0FDF4;border:1px solid #A7F3D0;border-radius:10px;padding:12px 14px;font-size:13px;color:#065F46;line-height:1.5;margin-bottom:14px}
+.required{color:#FF3B3B}
 #done{display:none}
 .big-icon{font-size:56px;text-align:center;margin:24px 0 12px}
 .done-title{font-size:22px;font-weight:800;text-align:center;margin-bottom:8px}
@@ -56,30 +69,47 @@ input:focus{border-color:#0057FF;background:#fff}
       <div class="card-title">&#128100; Vos coordonn&#233;es</div>
       <div class="card-body">
         <div class="row2">
-          <div><div class="label">Nom *</div><input id="f-nom" placeholder="DUPONT" autocomplete="family-name"></div>
-          <div><div class="label">Pr&#233;nom *</div><input id="f-prenom" placeholder="Jean" autocomplete="given-name"></div>
+          <div><div class="label">Nom <span class="required">*</span></div><input type="text" id="f-nom" placeholder="DUPONT" autocomplete="family-name"></div>
+          <div><div class="label">Pr&#233;nom <span class="required">*</span></div><input type="text" id="f-prenom" placeholder="Jean" autocomplete="given-name"></div>
         </div>
-        <div><div class="label">Adresse *</div><input id="f-adresse" placeholder="12 rue des Lilas" autocomplete="street-address"></div>
+        <div><div class="label">Adresse <span class="required">*</span></div><input type="text" id="f-adresse" placeholder="12 rue des Lilas" autocomplete="street-address"></div>
         <div class="row2">
-          <div><div class="label">Code postal *</div><input id="f-cp" placeholder="18000" maxlength="5" inputmode="numeric" autocomplete="postal-code"></div>
-          <div><div class="label">Ville *</div><input id="f-ville" placeholder="Bourges" autocomplete="address-level2"></div>
+          <div><div class="label">Code postal <span class="required">*</span></div><input type="text" id="f-cp" placeholder="18000" maxlength="5" inputmode="numeric" autocomplete="postal-code"></div>
+          <div><div class="label">Ville <span class="required">*</span></div><input type="text" id="f-ville" placeholder="Bourges" autocomplete="address-level2"></div>
         </div>
         <div class="row2">
-          <div><div class="label">T&#233;l&#233;phone</div><input id="f-tel" type="tel" placeholder="06 XX XX XX XX" autocomplete="tel"></div>
-          <div><div class="label">Email</div><input id="f-email" type="email" placeholder="jean@exemple.fr" autocomplete="email"></div>
+          <div><div class="label">T&#233;l&#233;phone</div><input type="tel" id="f-tel" placeholder="06 XX XX XX XX" autocomplete="tel"></div>
+          <div><div class="label">Email</div><input type="email" id="f-email" placeholder="jean@exemple.fr" autocomplete="email"></div>
         </div>
-        <div><div class="label">Notes</div><input id="f-notes" placeholder="Abri, chien, portail..."></div>
+        <div><div class="label">Notes (abri, chien, portail...)</div><input type="text" id="f-notes" placeholder="Informations utiles pour nos techniciens"></div>
       </div>
     </div>
     <div class="card">
       <div class="card-title">&#127946; Intervention souhait&#233;e</div>
       <div class="card-body" id="presta-list"></div>
     </div>
+    <div class="card" id="options-card" style="display:none">
+      <div class="card-title">&#10133; Options</div>
+      <div class="card-body" id="options-list"></div>
+    </div>
     <div class="card">
-      <div class="card-title">&#128197; Semaine souhait&#233;e</div>
+      <div class="card-title">&#128197; Disponibilit&#233;s</div>
       <div class="card-body">
-        <p style="font-size:13px;color:#5A6478">Indiquez votre pr&#233;f&#233;rence, nous ferons notre possible.</p>
-        <div class="weeks" id="week-list"></div>
+        <div class="convenance-box" id="convenance-box" onclick="togConvenance()">
+          <input type="checkbox" id="f-convenance">
+          <div>
+            <div style="font-weight:700;font-size:14px">&#9889; &#192; votre convenance</div>
+            <div style="font-size:12px;color:#5A6478;margin-top:2px">Nous planifions au plus vite selon nos tourn&#233;es</div>
+          </div>
+        </div>
+        <div id="wk-section">
+          <div class="label">Semaines souhait&#233;es <span style="font-weight:400;color:#9CA3AF">(plusieurs possibles)</span></div>
+          <div class="weeks" id="week-list"></div>
+        </div>
+        <div id="jours-section">
+          <div class="label">Jours disponibles <span style="font-weight:400;color:#9CA3AF">(optionnel)</span></div>
+          <div style="display:flex;flex-direction:column;gap:7px;margin-top:8px" id="jours-list"></div>
+        </div>
       </div>
     </div>
     <button class="btn-main" id="btn-envoyer">&#9989; Envoyer ma demande</button>
@@ -89,37 +119,52 @@ input:focus{border-color:#0057FF;background:#fff}
     <div class="done-title">Merci !</div>
     <div class="done-sub">Envoyez-nous votre demande via les boutons ci-dessous.</div>
     <div class="recap" id="recap-box"></div>
-    <a id="lien-email" class="btn-contact" style="background:linear-gradient(135deg,#0057FF,#3B82F6)" href="#">&#9993;&#65039; Envoyer par email</a>
-    <div class="hint">Votre appli mail va s'ouvrir &mdash; appuyez sur Envoyer</div>
     <a id="lien-sms" class="btn-contact" style="background:linear-gradient(135deg,#059669,#10B981)" href="#">&#128172; Envoyer par SMS</a>
-    <div class="hint">Votre appli SMS va s'ouvrir &mdash; appuyez sur Envoyer</div>
+    <div class="hint">Votre appli SMS va s'ouvrir &#8212; appuyez sur Envoyer</div>
+    <a id="lien-email" class="btn-contact" style="background:linear-gradient(135deg,#0057FF,#3B82F6)" href="#">&#9993;&#65039; Envoyer par email</a>
+    <div class="hint">Votre appli mail va s'ouvrir &#8212; appuyez sur Envoyer</div>
   </div>
 </div>
 <script>
 window.onload = function() {
   var selPresta = null;
-  var selSemaine = null;
+  var selOptions = {};
+  var selSemaines = [];
+  var selConvenance = false;
+  var selJours = {};
 
   var mois = new Date().getMonth() + 1;
   var saison = (mois >= 9 && mois <= 11) ? 'hivernage' : 'ouverture';
 
-  var prestations = saison === 'hivernage' ? [
-    {id:'hiv-simple',  nom:'Hivernage simple',          prix:'220 euros', desc:'1h - 1 technicien'},
-    {id:'hiv-complet', nom:'Hivernage complet',          prix:'340 euros', desc:'2h - 2 techniciens'}
-  ] : [
+  var PRESTATIONS_OUV = [
     {id:'simple',   nom:'Niveau 1 - Ouverture simple',   prix:'240 euros', desc:'Remise en route - 1h - 1 technicien'},
-    {id:'complete', nom:'Niveau 2 - Ouverture complete', prix:'390 euros', desc:'Nettoyage fond + paroi - 2h - 2 techniciens'}
+    {id:'complete', nom:'Niveau 2 - Ouverture complete', prix:'390 euros', desc:'Nettoyage fond + paroi + ligne eau - 2h - 2 techniciens'}
   ];
-
-  var semaines = saison === 'hivernage' ? [
-    [39,'22-26/9'],[40,'29/9-3/10'],[41,'6-10/10'],[42,'13-17/10'],
-    [43,'20-24/10'],[44,'27-31/10'],[45,'3-7/11'],[46,'10-14/11'],
-    [47,'17-21/11'],[48,'24-28/11']
-  ] : [
+  var PRESTATIONS_HIV = [
+    {id:'hiv-simple',  nom:'Hivernage simple',  prix:'220 euros', desc:'1h - 1 technicien'},
+    {id:'hiv-complet', nom:'Hivernage complet', prix:'340 euros', desc:'2h - 2 techniciens'}
+  ];
+  var OPTIONS_OUV = [
+    {id:'active',    nom:'Active sous abri',    prix:'+195 euros', desc:'Requiert Niveau 1 ou 2'},
+    {id:'electro',   nom:'Electrolyseur / 3en1',prix:'+40 euros',  desc:'Remise en route'},
+    {id:'sel',       nom:'Sel 25 kg',           prix:'+17,50 euros/sac', desc:'Indiquer la quantite', qty:true},
+    {id:'nettoyage', nom:'Nettoyage volets/baches/abris', prix:'Sur devis', desc:''}
+  ];
+  var SEMAINES_OUV = [
     [13,'31/3-4/4'],[14,'7-11/4'],[15,'14-18/4'],[16,'21-25/4'],
     [17,'28/4-2/5'],[18,'5-9/5'],[19,'12-16/5'],[20,'19-23/5'],
     [21,'26-30/5'],[22,'2-6/6'],[23,'9-13/6'],[24,'16-20/6'],[25,'23-27/6']
   ];
+  var SEMAINES_HIV = [
+    [39,'22-26/9'],[40,'29/9-3/10'],[41,'6-10/10'],[42,'13-17/10'],
+    [43,'20-24/10'],[44,'27-31/10'],[45,'3-7/11'],[46,'10-14/11'],
+    [47,'17-21/11'],[48,'24-28/11']
+  ];
+  var JOURS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi'];
+
+  var prestations = saison === 'hivernage' ? PRESTATIONS_HIV : PRESTATIONS_OUV;
+  var semaines = saison === 'hivernage' ? SEMAINES_HIV : SEMAINES_OUV;
+  var options = saison === 'hivernage' ? [] : OPTIONS_OUV;
 
   // Build prestations
   var pl = document.getElementById('presta-list');
@@ -135,9 +180,36 @@ window.onload = function() {
         var all = document.querySelectorAll('.presta');
         for (var j = 0; j < all.length; j++) all[j].classList.remove('sel');
         d.classList.add('sel');
+        // Show options if ouverture
+        if (saison !== 'hivernage' && options.length) {
+          document.getElementById('options-card').style.display = '';
+        }
       };
       pl.appendChild(d);
     })(prestations[i]);
+  }
+
+  // Build options
+  if (options.length) {
+    var ol = document.getElementById('options-list');
+    for (var i = 0; i < options.length; i++) {
+      (function(o) {
+        var d = document.createElement('div');
+        d.className = 'option-item';
+        var qtyHtml = o.qty ? '<input type="number" id="qty-' + o.id + '" min="1" max="20" value="1" onclick="event.stopPropagation()" style="width:50px;padding:4px;font-size:14px;border:1px solid #DDE3F0;border-radius:6px;margin-left:6px"> sac(s)' : '';
+        d.innerHTML = '<input type="checkbox" id="opt-' + o.id + '">'
+          + '<div><div class="option-name">' + o.nom + ' <span style="color:#0057FF;font-weight:800">' + o.prix + '</span>' + qtyHtml + '</div>'
+          + (o.desc ? '<div class="option-desc">' + o.desc + '</div>' : '') + '</div>';
+        d.onclick = function(e) {
+          if (e.target.type === 'number') return;
+          var cb = document.getElementById('opt-' + o.id);
+          cb.checked = !cb.checked;
+          selOptions[o.id] = cb.checked;
+          d.classList.toggle('sel', cb.checked);
+        };
+        ol.appendChild(d);
+      })(options[i]);
+    }
   }
 
   // Build semaines
@@ -148,21 +220,51 @@ window.onload = function() {
       d.className = 'week';
       d.innerHTML = '<b>S' + num + '</b><small>' + lbl + '</small>';
       d.onclick = function() {
-        selSemaine = num;
-        var all = document.querySelectorAll('.week');
-        for (var j = 0; j < all.length; j++) all[j].classList.remove('sel');
-        d.classList.add('sel');
+        var idx = selSemaines.indexOf(num);
+        if (idx >= 0) { selSemaines.splice(idx, 1); d.classList.remove('sel'); }
+        else { selSemaines.push(num); d.classList.add('sel'); }
       };
       wl.appendChild(d);
     })(semaines[i][0], semaines[i][1]);
   }
+
+  // Build jours
+  var jl = document.getElementById('jours-list');
+  for (var i = 0; i < JOURS.length; i++) {
+    (function(day, nom) {
+      var d = document.createElement('div');
+      d.className = 'jour-row';
+      d.innerHTML = '<span class="jour-name">' + nom + '</span>'
+        + '<label class="demi-label"><input type="checkbox" id="j-' + day + '-am" onchange="togJour(' + day + ','am',this)"> Matin</label>'
+        + '<label class="demi-label"><input type="checkbox" id="j-' + day + '-pm" onchange="togJour(' + day + ','pm',this)"> Ap-midi</label>';
+      jl.appendChild(d);
+    })(i, JOURS[i]);
+  }
+
+  window.togJour = function(day, period, el) {
+    if (!selJours[day]) selJours[day] = {am: false, pm: false};
+    selJours[day][period] = el.checked;
+  };
+
+  window.togConvenance = function() {
+    var cb = document.getElementById('f-convenance');
+    cb.checked = !cb.checked;
+    selConvenance = cb.checked;
+    var box = document.getElementById('convenance-box');
+    box.classList.toggle('sel', selConvenance);
+    var wks = document.getElementById('wk-section');
+    var jrs = document.getElementById('jours-section');
+    wks.style.opacity = selConvenance ? '0.4' : '1';
+    wks.style.pointerEvents = selConvenance ? 'none' : '';
+    jrs.style.opacity = selConvenance ? '0.4' : '1';
+    jrs.style.pointerEvents = selConvenance ? 'none' : '';
+  };
 
   // Nom uppercase
   document.getElementById('f-nom').addEventListener('input', function() {
     this.value = this.value.toUpperCase();
   });
 
-  // Submit
   document.getElementById('btn-envoyer').onclick = function() {
     var nom = document.getElementById('f-nom').value.trim();
     var prenom = document.getElementById('f-prenom').value.trim();
@@ -181,21 +283,52 @@ window.onload = function() {
     for (var i = 0; i < prestations.length; i++) {
       if (prestations[i].id === selPresta) { prestaNom = prestations[i].nom + ' (' + prestations[i].prix + ')'; break; }
     }
-    var semaineLbl = selSemaine ? 'Semaine ' + selSemaine : 'Non precisee';
 
+    // Build options string
+    var optsStr = '';
+    for (var k in selOptions) {
+      if (selOptions[k]) {
+        for (var i = 0; i < options.length; i++) {
+          if (options[i].id === k) {
+            var qty = options[i].qty ? (document.getElementById('qty-' + k) ? document.getElementById('qty-' + k).value : '1') : '';
+            optsStr += options[i].nom + (qty ? ' x' + qty : '') + '; ';
+            break;
+          }
+        }
+      }
+    }
+
+    var semainesStr = selConvenance ? 'A votre convenance' : (selSemaines.length > 0 ? 'S' + selSemaines.join('+S') : 'Non precisee');
+
+    // Build jours string
+    var joursStr = '';
+    var joursNoms = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi'];
+    for (var d = 0; d < 5; d++) {
+      if (selJours[d]) {
+        var parts = [];
+        if (selJours[d].am) parts.push('matin');
+        if (selJours[d].pm) parts.push('ap-midi');
+        if (parts.length) joursStr += joursNoms[d] + ' ' + parts.join('+') + '; ';
+      }
+    }
+
+    // Build app URL - use shorter param names to avoid truncation
     var appUrl = 'https://admin-18000.github.io/teillais-piscines'
       + '?nom=' + encodeURIComponent(nom)
       + '&prenom=' + encodeURIComponent(prenom)
       + '&adresse=' + encodeURIComponent(adresse)
       + '&cp=' + encodeURIComponent(cp)
       + '&ville=' + encodeURIComponent(ville)
-      + '&tel=' + encodeURIComponent(tel)
-      + '&email=' + encodeURIComponent(email)
-      + '&notes=' + encodeURIComponent(notes)
+      + (tel ? '&tel=' + encodeURIComponent(tel) : '')
+      + (email ? '&email=' + encodeURIComponent(email) : '')
+      + (notes ? '&notes=' + encodeURIComponent(notes) : '')
       + '&presta=' + encodeURIComponent(selPresta)
-      + '&wk=' + (selSemaine || '')
+      + (selSemaines.length ? '&wks=' + selSemaines.join(',') : '')
+      + (selConvenance ? '&conv=1' : '')
+      + (joursStr ? '&jours=' + encodeURIComponent(joursStr) : '')
       + '&saison=' + saison;
 
+    // Email body
     var sujet = 'Demande intervention - ' + nom + ' ' + prenom + ' - ' + ville;
     var corps = 'Nouvelle demande Teillais Piscines\n\n'
       + 'Nom : ' + nom + ' ' + prenom + '\n'
@@ -204,23 +337,30 @@ window.onload = function() {
       + (email ? 'Email : ' + email + '\n' : '')
       + (notes ? 'Notes : ' + notes + '\n' : '')
       + '\nIntervention : ' + prestaNom + '\n'
-      + 'Semaine : ' + semaineLbl + '\n'
+      + (optsStr ? 'Options : ' + optsStr + '\n' : '')
+      + 'Semaines : ' + semainesStr + '\n'
+      + (joursStr ? 'Jours : ' + joursStr + '\n' : '')
       + '\nLIEN APP :\n' + appUrl;
 
-    var sms = 'TP Piscines - ' + nom + ' ' + prenom + ' - ' + cp + ' ' + ville
-      + ' - ' + prestaNom + ' - ' + semaineLbl + ' - Lien: ' + appUrl;
+    // SMS - shorter
+    var sms = nom + ' ' + prenom + ' - ' + cp + ' ' + ville + ' - ' + prestaNom
+      + ' - ' + semainesStr
+      + (joursStr ? ' - ' + joursStr : '')
+      + ' | ' + appUrl;
 
+    document.getElementById('lien-sms').href = 'sms:+33666975529?body=' + encodeURIComponent(sms);
     document.getElementById('lien-email').href =
       'mailto:melvin@teillaispiscines.fr?subject=' + encodeURIComponent(sujet) + '&body=' + encodeURIComponent(corps);
-    document.getElementById('lien-sms').href =
-      'sms:+33666975529?body=' + encodeURIComponent(sms);
 
+    // Recap
     document.getElementById('recap-box').innerHTML =
       '<div class="rl">Client</div><div class="rv">' + nom + ' ' + prenom + '</div>'
       + '<div class="rl">Adresse</div><div class="rv">' + adresse + ', ' + cp + ' ' + ville + '</div>'
       + (tel ? '<div class="rl">Tel</div><div class="rv">' + tel + '</div>' : '')
       + '<div class="rl">Intervention</div><div class="rv">' + prestaNom + '</div>'
-      + '<div class="rl">Semaine</div><div class="rv">' + semaineLbl + '</div>';
+      + (optsStr ? '<div class="rl">Options</div><div class="rv">' + optsStr + '</div>' : '')
+      + '<div class="rl">Semaines</div><div class="rv">' + semainesStr + '</div>'
+      + (joursStr ? '<div class="rl">Jours</div><div class="rv">' + joursStr + '</div>' : '');
 
     document.getElementById('form-view').style.display = 'none';
     document.getElementById('done').style.display = 'block';

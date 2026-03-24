@@ -221,9 +221,11 @@ body{
 .pcap{font-size:9px;color:var(--t3);text-align:center;padding:1px 0 3px;font-weight:700}
 .cap-f{color:var(--R)!important}.cap-ok{color:var(--G)!important}.cap-w{color:var(--O)!important}
 .rcard{border-radius:5px;padding:4px 7px;margin-bottom:3px;font-size:10.5px;cursor:pointer;position:relative;border:1.5px solid}
-.rcard.simple{background:#DBEAFE;border-color:#3B82F6}.rcard.complete{background:#FEF3C7;border-color:#F59E0B}
-.rcard.active{background:#D1FAE5;border-color:#10B981}.rcard.hivernage{background:#EDE9FE;border-color:#8B5CF6}
-.rcard.entretien{background:#ECFDF5;border-color:#34D399}
+.rcard.simple{background:#DBEAFE;border-color:#3B82F6;border-left:4px solid #2563EB}
+.rcard.complete{background:#FEF9C3;border-color:#F59E0B;border-left:4px solid #D97706}
+.rcard.active{background:#DCFCE7;border-color:#10B981;border-left:4px solid #059669}
+.rcard.hivernage{background:#EDE9FE;border-color:#8B5CF6;border-left:4px solid #7C3AED}
+.rcard.entretien{background:#ECFDF5;border-color:#34D399;border-left:4px solid #059669}
 .rn{font-weight:700;color:var(--t)}.rt{color:var(--t2);font-size:9px}.rc{color:var(--t3);font-size:9px}
 .rx{position:absolute;top:2px;right:3px;color:var(--t3);cursor:pointer;font-size:13px;font-weight:700}
 /* Mobile planning day view */
@@ -477,10 +479,29 @@ input[type="file"]{display:none}
     </div>
   </div>
   <div class="card">
-    <div class="ch"><div class="ct" id="wk-ttl">📅 Semaine souhaitée</div></div>
+    <div class="ch"><div class="ct" id="wk-ttl">📅 Disponibilités</div></div>
     <div class="cb">
-      <div class="wsel" id="wksel"></div>
-      <div style="margin-top:10px;font-size:11px;color:var(--t3)" id="wk-hint"></div>
+      <!-- Convenance -->
+      <div style="margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px;border:2px solid var(--bdr);border-radius:var(--rs);transition:all .12s" id="lbl-convenance">
+          <input type="checkbox" id="f-convenance" onchange="togConvenance(this)" style="width:18px;height:18px;accent-color:var(--B)">
+          <div>
+            <div style="font-weight:700;font-size:14px">⚡ À votre convenance</div>
+            <div style="font-size:12px;color:var(--t2);margin-top:2px">Nous planifions au plus vite selon nos tournées</div>
+          </div>
+        </label>
+      </div>
+      <!-- Multi-semaines -->
+      <div id="wk-section">
+        <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Semaines souhaitées <span style="font-weight:400;color:var(--t3)">(plusieurs possibles)</span></div>
+        <div class="wsel" id="wksel"></div>
+        <div style="margin-top:8px;font-size:11px;color:var(--t3)" id="wk-hint"></div>
+      </div>
+      <!-- Jours et demi-journées -->
+      <div id="jours-section" style="margin-top:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Jours disponibles <span style="font-weight:400;color:var(--t3)">(optionnel — précisez si besoin)</span></div>
+        <div id="jours-grid" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
     </div>
   </div>
   <div class="sumbox" id="sumbox">
@@ -823,7 +844,7 @@ let saison=detectSaison();
 let planWk=null;
 let pendSlot=null;
 let clFilt='all',clSrch='';
-let fP=null,fO={},fWk=null;
+let fP=null,fO={},fWk=null,fWks=[],fConvenance=false,fJours=[];
 let _dirty=false;
 
 /* ════ AUTOSAVE ════ */
@@ -981,10 +1002,16 @@ function renderWkSel(){
 }
 
 function pickWk(num,el){
-  fWk=num;
+  // Multi-select: toggle
   const hcls=saison==='hivernage'?'hv':saison==='entretien'?'et':'';
-  document.querySelectorAll('.wb').forEach(b=>b.classList.remove('sel','hv','et'));
-  el.classList.add('sel');if(hcls)el.classList.add(hcls);
+  if(fWks.includes(num)){
+    fWks=fWks.filter(w=>w!==num);
+    el.classList.remove('sel','hv','et');
+  } else {
+    fWks.push(num);
+    el.classList.add('sel');if(hcls)el.classList.add(hcls);
+  }
+  fWk=fWks.length>0?Math.min(...fWks):null; // earliest selected week
   calcSum();
 }
 function wkHours(wkNum){
@@ -1081,7 +1108,11 @@ function saveClient(){
     adresse:document.getElementById('f-adresse').value.trim(),
     ville,cp,notes:document.getElementById('f-notes').value.trim(),
     presta:fP,opts:{...fO,selQty:sq,remise},
-    wkSouh:fWk,montant:+montant.toFixed(2),
+    wkSouh:fWks.length>0?Math.min(...fWks):fWk, // semaine principale (compat)
+    wksSouh:fWks,        // tableau de semaines souhaitées
+    convenance:fConvenance, // au plus vite
+    joursOk:fJours,      // [{day:0,am:true,pm:true}, ...]
+    montant:+montant.toFixed(2),
     planifie:false,techId:null,jour:null,wkPl:null,
     createdAt:new Date().toISOString()
   });
@@ -1096,14 +1127,19 @@ function saveClient(){
 function resetForm(){
   ['f-nom','f-prenom','f-tel','f-email','f-adresse','f-ville','f-cp','f-notes']
     .forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  fP=null;fO={};fWk=null;
+  fP=null;fO={};fWk=null;fWks=[];fConvenance=false;fJours=[];
   const sq=document.getElementById('f-sel-qty');if(sq)sq.value=1;
   const ri=document.getElementById('f-remise');if(ri)ri.checked=false;
+  const fc=document.getElementById('f-convenance');if(fc){fc.checked=false;}
+  const lc=document.getElementById('lbl-convenance');if(lc)lc.style.borderColor='var(--bdr)';
+  const ws=document.getElementById('wk-section');if(ws)ws.style.opacity='1';
+  const js=document.getElementById('jours-section');if(js)js.style.opacity='1';
   document.querySelectorAll('.oc').forEach(c=>c.classList.remove('sel'));
-  // Re-disable addons
+  document.querySelectorAll('.wb').forEach(b=>b.classList.remove('sel','hv','et'));
+  document.querySelectorAll('.jour-check').forEach(c=>{c.checked=false;});
   ['op-active','op-hiv-actif'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('disabled');});
   document.getElementById('ahint').style.display='none';
-  calcSum();renderWkSel();
+  calcSum();renderWkSel();renderJoursGrid();
 }
 
 /* ════ CLIENTS TABLE ════ */
@@ -1505,6 +1541,70 @@ function renderUnplaced(){
 }
 
 
+
+/* ════ JOURS DISPONIBILITÉS ════ */
+const JOURS_NOMS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi'];
+function renderJoursGrid(){
+  const cont=document.getElementById('jours-grid');if(!cont)return;
+  cont.innerHTML=JOURS_NOMS.map((nom,d)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg);border-radius:var(--rs);border:1px solid var(--bdr)">
+      <span style="font-weight:700;font-size:13px;width:72px;flex-shrink:0">${nom}</span>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1">
+        <input type="checkbox" class="jour-check" data-day="${d}" data-period="am"
+          onchange="togJour(${d},'am',this)"
+          style="width:15px;height:15px;accent-color:var(--B)">
+        <span style="font-size:12px;color:var(--t2)">Matin</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:1">
+        <input type="checkbox" class="jour-check" data-day="${d}" data-period="pm"
+          onchange="togJour(${d},'pm',this)"
+          style="width:15px;height:15px;accent-color:var(--B)">
+        <span style="font-size:12px;color:var(--t2)">Après-midi</span>
+      </label>
+    </div>
+  `).join('');
+}
+
+function togJour(day,period,el){
+  let j=fJours.find(x=>x.day===day);
+  if(!j){j={day,am:false,pm:false};fJours.push(j);}
+  j[period]=el.checked;
+  // Remove if both unchecked
+  if(!j.am&&!j.pm)fJours=fJours.filter(x=>x.day!==day);
+}
+
+function togConvenance(el){
+  fConvenance=el.checked;
+  const lbl=document.getElementById('lbl-convenance');
+  if(lbl)lbl.style.borderColor=fConvenance?'var(--B)':'var(--bdr)';
+  const ws=document.getElementById('wk-section');
+  const js=document.getElementById('jours-section');
+  if(ws)ws.style.opacity=fConvenance?'.4':'1';
+  if(ws)ws.style.pointerEvents=fConvenance?'none':'';
+  if(js)js.style.opacity=fConvenance?'.4':'1';
+  if(js)js.style.pointerEvents=fConvenance?'none':'';
+}
+
+/* ════ CONTRAINTE CLIENT ════ */
+// Vérifie si un créneau (wk, day, am/pm) respecte les contraintes du client
+function creneauOk(client, wk, day){
+  // Si convenance : tout créneau est OK
+  if(client.convenance)return{ok:true,score:0};
+  // Si semaines définies et ce n'est pas une semaine autorisée
+  const wks=client.wksSouh&&client.wksSouh.length>0?client.wksSouh:null;
+  if(wks&&!wks.includes(wk))return{ok:false};
+  // Si jours définis : vérifier que ce jour est autorisé
+  const joursOk=client.joursOk&&client.joursOk.length>0?client.joursOk:null;
+  if(joursOk){
+    const j=joursOk.find(x=>x.day===day);
+    if(!j)return{ok:false}; // jour non autorisé
+    // Score : préférer matin (am) sur après-midi (pm) si les deux OK
+    const score=j.am&&j.pm?0:j.am?-1:1; // matin légèrement prioritaire
+    return{ok:true,score};
+  }
+  return{ok:true,score:0};
+}
+
 /* ════ GEO ENGINE — distance par code postal ════
    Centroïdes approximatifs par CP (2 premiers chiffres = département)
    Coordonnées en degrés décimaux lat/lng
@@ -1568,72 +1668,86 @@ function findBestSlot(client, wks, preferWk){
   const cp=client.cp||'18000';
   let best=null;
 
-  // Score combiné : charge journée (prioritaire) + proximité géo (tiebreaker)
-  // Permet de répartir sur tous les jours avant de regrouper géographiquement
-  function slotScore(wk,d,techId){
-    const charge=slotH(wk,d,techId); // heures déjà utilisées ce jour
-    const geo=techGeoScore(wk,d,techId,cp); // distance moyenne aux clients existants
-    // Normaliser : charge pèse 60%, geo 40%
-    // Si le slot est vide (geo=999), on lui donne quand même une chance
-    const geoNorm=geo>=999?50:geo; // cap à 50km si vide
-    return charge*10 + geoNorm*0.4;
+  // ── Score combiné ──
+  // Priorité 1 : contraintes client (jour/période) — éliminatoire
+  // Priorité 2 : regrouper Niv.2 sur jours où tech3 est déjà utilisé
+  // Priorité 3 : répartir la charge entre jours (éviter l'empilement)
+  // Priorité 4 : proximité géo
+  function slotScore(wk,d,techId,constraintScore){
+    const charge=slotH(wk,d,techId);
+    const geo=techGeoScore(wk,d,techId,cp);
+    const geoNorm=geo>=999?50:Math.min(geo,150);
+    // Bonus si tech3 déjà actif ce jour (pour grouper les Niv.2)
+    const dbl=DB.techs[2];
+    const tech3Active=pi.needsDoublure&&dbl?slotH(wk,d,dbl.id)>0?-20:0:0;
+    return charge*10 + geoNorm*0.4 + tech3Active + (constraintScore||0)*5;
   }
 
-  // Semaines prioritaires : d'abord celles proches de preferWk
-  const wksSorted=[...wks].sort((a,b)=>{
-    const da=Math.abs(a.num-(preferWk||a.num));
-    const db=Math.abs(b.num-(preferWk||b.num));
-    return da-db;
-  });
+  // ── Semaines candidates ──
+  // Si convenance : toutes les semaines disponibles, triées par charge
+  // Sinon : semaines demandées en priorité, puis voisines
+  let wkCandidates;
+  if(client.convenance){
+    wkCandidates=[...wks]; // toutes, triées plus bas par charge totale
+  } else if(client.wksSouh&&client.wksSouh.length>0){
+    // Semaines demandées d'abord, puis débordement ±2
+    const demanded=wks.filter(w=>client.wksSouh.includes(w.num));
+    const nearby=wks.filter(w=>!client.wksSouh.includes(w.num)&&
+      client.wksSouh.some(sw=>Math.abs(w.num-sw)<=2));
+    wkCandidates=[...demanded,...nearby,...wks.filter(w=>
+      !demanded.includes(w)&&!nearby.includes(w))];
+  } else if(preferWk){
+    wkCandidates=[...wks].sort((a,b)=>
+      Math.abs(a.num-preferWk)-Math.abs(b.num-preferWk));
+  } else {
+    wkCandidates=[...wks];
+  }
 
-  for(const wk of wksSorted){
-    if(preferWk&&Math.abs(wk.num-preferWk)>3)continue;
+  const isInPreferred=(wk)=>{
+    if(client.convenance)return true;
+    if(client.wksSouh&&client.wksSouh.length>0)return client.wksSouh.includes(wk);
+    if(preferWk)return Math.abs(wk-preferWk)<=3;
+    return true;
+  };
+
+  for(const wk of wkCandidates){
     for(let d=0;d<5;d++){
+      // ── Vérifier contraintes client (jour/période) ──
+      const constraint=creneauOk(client,wk.num,d);
+      if(!constraint.ok)continue;
+
+      const isSuggested=!isInPreferred(wk.num);
+
       if(pi.needsDoublure){
-        // Niv.2 : Tech principal (Tech1 ou Tech2) + Tech3 doublure obligatoire
+        // Niv.2 : Tech principal + Tech3 doublure obligatoire
         const dbl=DB.techs[2];
         if(!dbl)continue;
         if(slotH(wk.num,d,dbl.id)+pi.h>MAX_H)continue;
         const mains=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
         if(!mains.length)continue;
-        // Choisir le tech principal avec le meilleur score combiné
-        const scored=mains.map(t=>({t,s:slotScore(wk.num,d,t.id)})).sort((a,b)=>a.s-b.s);
-        const score=scored[0].s;
-        const isSuggested=preferWk&&wk.num!==preferWk;
+        const scored=mains.map(t=>({t,s:slotScore(wk.num,d,t.id,constraint.score)}))
+          .sort((a,b)=>a.s-b.s);
+        const score=scored[0].s-(isSuggested?0:100); // bonus pour semaines demandées
         if(!best||score<best.score)
           best={wk:wk.num,day:d,techId:scored[0].t.id,doublureId:dbl.id,score,isSuggested};
       } else {
-        // Prestation simple : Tech1 ou Tech2, séparément
-        // Chaque tech a SA tournée — on ne les mélange pas sur le même jour sauf si nécessaire
-        const mains=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
-        if(!mains.length)continue;
-        const scored=mains.map(t=>({t,s:slotScore(wk.num,d,t.id)})).sort((a,b)=>a.s-b.s);
-        const isSuggested=preferWk&&wk.num!==preferWk;
-        if(!best||scored[0].s<best.score)
-          best={wk:wk.num,day:d,techId:scored[0].t.id,score:scored[0].s,isSuggested};
-      }
-    }
-  }
-
-  // Fallback : chercher partout si rien trouvé dans ±3 semaines
-  if(!best){
-    for(const wk of wks){
-      for(let d=0;d<5;d++){
-        if(pi.needsDoublure){
-          const dbl=DB.techs[2];
-          if(!dbl||slotH(wk.num,d,dbl.id)+pi.h>MAX_H)continue;
-          const mains=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
-          if(!mains.length)continue;
-          const scored=mains.map(t=>({t,s:slotScore(wk.num,d,t.id)})).sort((a,b)=>a.s-b.s);
-          if(!best||scored[0].s<best.score)
-            best={wk:wk.num,day:d,techId:scored[0].t.id,doublureId:dbl.id,score:scored[0].s,isSuggested:true};
-        } else {
-          const mains=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
-          if(!mains.length)continue;
-          const scored=mains.map(t=>({t,s:slotScore(wk.num,d,t.id)})).sort((a,b)=>a.s-b.s);
-          if(!best||scored[0].s<best.score)
-            best={wk:wk.num,day:d,techId:scored[0].t.id,score:scored[0].s,isSuggested:true};
+        // Niv.1 : Tech1, Tech2, OU Tech3 si pas en doublure ce jour
+        // Tech3 disponible pour Niv.1 si pas déjà assigné en doublure ce jour
+        const dbl=DB.techs[2];
+        const tech3HasNiv2=dbl?DB.clients.some(c=>
+          c.saison===saison&&c.planifie&&c.wkPl===wk.num&&c.jour===d&&
+          (c.doublureId===dbl.id)):false;
+        const eligibles=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
+        // Add tech3 if available (not in doublure this day)
+        if(dbl&&!tech3HasNiv2&&slotH(wk.num,d,dbl.id)+pi.h<=MAX_H){
+          eligibles.push(dbl);
         }
+        if(!eligibles.length)continue;
+        const scored=eligibles.map(t=>({t,s:slotScore(wk.num,d,t.id,constraint.score)}))
+          .sort((a,b)=>a.s-b.s);
+        const score=scored[0].s-(isSuggested?0:100);
+        if(!best||score<best.score)
+          best={wk:wk.num,day:d,techId:scored[0].t.id,score,isSuggested};
       }
     }
   }
@@ -1691,8 +1805,16 @@ function autoAll(){
   let placed=0;
   const up=clSaison().filter(c=>!c.planifie)
     .sort((a,b)=>{
-      if((a.wkSouh||99)!==(b.wkSouh||99))return(a.wkSouh||99)-(b.wkSouh||99);
-      return(PRESTA[b.presta]?.h||1)-(PRESTA[a.presta]?.h||1);
+      // Priorité 1 : les plus contraints d'abord (jours précis > semaines précises > convenance)
+      const contraA=(a.joursOk&&a.joursOk.length>0)?0:(a.wksSouh&&a.wksSouh.length>0)?1:a.convenance?3:2;
+      const contraB=(b.joursOk&&b.joursOk.length>0)?0:(b.wksSouh&&b.wksSouh.length>0)?1:b.convenance?3:2;
+      if(contraA!==contraB)return contraA-contraB;
+      // Priorité 2 : Niv.2 (doublure) avant Niv.1 pour grouper les jours tech3
+      const h_a=PRESTA[a.presta]?.needsDoublure?1:0;
+      const h_b=PRESTA[b.presta]?.needsDoublure?1:0;
+      if(h_a!==h_b)return h_b-h_a;
+      // Priorité 3 : semaine la plus tôt
+      return(a.wkSouh||99)-(b.wkSouh||99);
     });
   const wks=getWks();
   for(const c of up){
@@ -1953,7 +2075,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const wks=getWks();
   planWk=wks[0]?.num||14;
 
-  updateBadges();renderDash();renderWkSel();renderLegend();
+  updateBadges();renderDash();renderWkSel();renderLegend();renderJoursGrid();
 
   // Autosave every 10s
   setInterval(autosave,10000);
@@ -1997,12 +2119,29 @@ document.addEventListener('DOMContentLoaded',()=>{
         const el=document.getElementById('op-'+_presta);
         if(el&&!el.classList.contains('disabled'))selP(_presta,el);
       }
-      // 5. Set week AFTER renderWkSel (saison triggers renderWkSel)
-      if(_wk){
+      // 5. Set weeks (multi)
+      const _wks=urlParams.get('wks');
+      if(_wks){
+        _wks.split(',').forEach(w=>{
+          const num=parseInt(w);
+          if(num){
+            document.querySelectorAll('.wb').forEach(b=>{
+              if(b.querySelector('.wn')&&b.querySelector('.wn').textContent==='S'+num)
+                pickWk(num,b);
+            });
+          }
+        });
+      } else if(_wk){
         document.querySelectorAll('.wb').forEach(b=>{
           if(b.querySelector('.wn')&&b.querySelector('.wn').textContent==='S'+_wk)
             pickWk(_wk,b);
         });
+      }
+      // 6. Convenance
+      const _conv=urlParams.get('conv');
+      if(_conv==='1'){
+        const fc=document.getElementById('f-convenance');
+        if(fc){fc.checked=true;togConvenance(fc);}
       }
       toast('📥 Fiche pré-remplie — vérifiez et cliquez Enregistrer','ok');
     },400);
