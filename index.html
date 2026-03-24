@@ -1097,8 +1097,16 @@ function showV(name){
   if(ni){ni.classList.add('on');
     if(saison==='hivernage')ni.classList.add('hv');
     else if(saison==='entretien')ni.classList.add('et');}
-  const map={planning:renderPlanning,zones:renderZones,clients:renderClients,
-    dashboard:renderDash,techniciens:renderTechs,saisie:()=>{renderWkSel();calcSum();}};
+  const map={
+    planning:renderPlanning,
+    zones:renderZones,
+    clients:renderClients,
+    dashboard:renderDash,
+    techniciens:renderTechs,
+    saisie:()=>{renderWkSel();calcSum();renderJoursGrid();},
+    finances:renderFinances,
+    route:()=>{initRouteSelectors();renderRoute();}
+  };
   if(map[name])map[name]();
   if(name==='planning'&&typeof buildMobWkPills==='function')buildMobWkPills();
 }
@@ -2005,7 +2013,15 @@ function printRoute(){
   const techName=techSel&&techSel.options[techSel.selectedIndex]?techSel.options[techSel.selectedIndex].text:'Tous les techniciens';
   const wkName=wkSel&&wkSel.options[wkSel.selectedIndex]?wkSel.options[wkSel.selectedIndex].text:'Toutes les semaines';
   const y=DB.annee||new Date().getFullYear();
-  const win=window.open('','_blank','width=800,height=900');
+  // Use iframe to avoid popup blocker
+  let printFrame=document.getElementById('print-frame');
+  if(printFrame)printFrame.remove();
+  printFrame=document.createElement('iframe');
+  printFrame.id='print-frame';
+  printFrame.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;border:none;background:#fff';
+  document.body.appendChild(printFrame);
+  const win=printFrame.contentWindow;
+  win.document.open();
   win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">');
   win.document.write('<title>Feuille de route — '+techName+' — '+wkName+'</title>');
   win.document.write('<style>');
@@ -2047,9 +2063,12 @@ function printRoute(){
   printHtml=printHtml.replace(/var\(--R\)/g,'#DC2626');
   printHtml=printHtml.replace(/var\(--O\)/g,'#D97706');
   win.document.write(printHtml);
+  win.document.write('<div style="position:fixed;bottom:16px;right:16px;display:flex;gap:8px;z-index:9999">');
+  win.document.write('<button onclick="window.print()" style="background:#0057FF;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:14px;box-shadow:0 4px 12px rgba(0,87,255,.3)">&#128438; Imprimer</button>');
+  win.document.write('<button onclick="parent.document.getElementById(\'print-frame\').remove()" style="background:#fff;color:#DC2626;border:2px solid #DC2626;border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer;font-size:14px">&#10005; Fermer</button>');
+  win.document.write('</div>');
   win.document.write('</body></html>');
   win.document.close();
-  setTimeout(()=>win.print(),500);
 }
 
 
