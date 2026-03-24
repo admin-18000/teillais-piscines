@@ -406,6 +406,13 @@ input[type="file"]{display:none}
   <div id="route-content"></div>
 </div>
 
+<!-- FINANCES & EXPORT -->
+<div class="view" id="view-finances">
+  <div class="ptitle">Finances &amp; Export</div>
+  <div class="psub">CA, taux de remplissage, exports et sauvegarde</div>
+  <div id="fin-content"></div>
+</div>
+
 <!-- DASHBOARD -->
 <div class="view on" id="view-dashboard">
   <div class="ptitle" id="d-title">Tableau de bord</div>
@@ -1989,7 +1996,7 @@ function renderRoute(){
 function printRoute(){
   // Open route content in a new clean window for printing
   const routeContent=document.getElementById('route-content');
-  if(!routeContent||!routeContent.innerHTML.trim()||routeContent.innerHTML.includes('Aucune tournee')){
+  if(!routeContent||!routeContent.innerHTML.trim()||routeContent.innerHTML.includes('Aucune tournee')||routeContent.innerHTML.includes('Aucun client')){
     toast('Aucune tournee a imprimer — selectionnez un technicien et une semaine','err');
     return;
   }
@@ -2027,7 +2034,19 @@ function printRoute(){
   win.document.write('<div style="font-size:11px;color:#9CA3AF;margin-top:2px">Imprimé le '+new Date().toLocaleDateString('fr-FR')+'</div></div>');
   win.document.write('<button onclick="window.print()" style="background:#0057FF;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:13px">🖨️ Imprimer</button>');
   win.document.write('</div>');
-  win.document.write(routeContent.innerHTML);
+  // Replace CSS vars with fixed values for the print window
+  let printHtml=routeContent.innerHTML;
+  printHtml=printHtml.replace(/var\(--B\)/g,'#0057FF');
+  printHtml=printHtml.replace(/var\(--fg\)/g,'#0F172A');
+  printHtml=printHtml.replace(/var\(--bg\)/g,'#F1F5FB');
+  printHtml=printHtml.replace(/var\(--bg2\)/g,'#E8EDF5');
+  printHtml=printHtml.replace(/var\(--bdr\)/g,'#DDE3F0');
+  printHtml=printHtml.replace(/var\(--t2\)/g,'#5A6478');
+  printHtml=printHtml.replace(/var\(--t3\)/g,'#9CA3AF');
+  printHtml=printHtml.replace(/var\(--G\)/g,'#059669');
+  printHtml=printHtml.replace(/var\(--R\)/g,'#DC2626');
+  printHtml=printHtml.replace(/var\(--O\)/g,'#D97706');
+  win.document.write(printHtml);
   win.document.write('</body></html>');
   win.document.close();
   setTimeout(()=>win.print(),500);
