@@ -688,6 +688,26 @@ input[type="file"]{display:none}
       <div id="techs-list"></div>
     </div>
   </div>
+
+  <!-- ZONES DIRECTIONNELLES -->
+  <div class="card" style="border:2px solid #0057FF">
+    <div class="ch" style="background:#EFF6FF">
+      <div class="ct" style="color:#1D4ED8">🧭 Zones directionnelles par jour</div>
+      <button class="btn bs sm" onclick="resetZones()">Réinitialiser</button>
+    </div>
+    <div class="cb">
+      <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.5">
+        Chaque jour de la semaine est associé à une zone géographique autour de Bourges.<br>
+        L'algo place automatiquement chaque client sur le jour dont la zone correspond à sa direction.<br>
+        <strong>Objectif : moins de 100km par tournée, pas d'aller-retour Nord/Sud dans la même journée.</strong>
+      </div>
+      <div id="zones-config-list"></div>
+      <div style="margin-top:12px;padding:10px;background:#F0FDF4;border:1px solid #A7F3D0;border-radius:8px;font-size:12px;color:#065F46">
+        💡 <strong>Conseil :</strong> Vendredi = Local (Bourges et proches &lt;35km). Lundi/Mardi = zones éloignées opposées. Mercredi/Jeudi = zones intermédiaires.
+      </div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="ch"><div class="ct">🗄️ Données</div></div>
     <div class="cb" style="display:flex;gap:10px;flex-wrap:wrap">
@@ -1597,7 +1617,7 @@ function renderPlanning(){
           <span class="rx" onclick="event.stopPropagation();unplan(${JSON.stringify(c.id)})">×</span>
           <div class="rn">${c.nom} ${c.prenom.charAt(0)}.</div>
           <div class="rt">${pi.lbl||''}${dblTech2?` <span style="color:${dblTech2.color};font-size:9px;font-weight:700">+${dblTech2.nom.split(' ')[0]}</span>`:''}</div>
-          <div class="rc">${c.ville} · ${c.cp.substring(0,2)} · ${pi.h||1}h · <span style="color:var(--B);font-weight:700">${arrH}</span></div>
+          <div class="rc">${c.ville} · ${c.cp.substring(0,2)} · ${pi.h||1}h · <span style="color:var(--B);font-weight:700">${arrH}</span>${(()=>{const idealDay=idealDayForCp(c.cp||'18000');const z=getZones().find(x=>x.day===idealDay);const wrong=idealDay!==di;return wrong&&z?` <span style="color:${z.color};font-size:9px;font-weight:700" title="Zone idéale: ${ZONE_DAY_NAMES[idealDay]}">⚠${ZONE_DAY_NAMES[idealDay].substring(0,3)}</span>`:'';})()} </div>
           <button onclick="event.stopPropagation();openMove(${JSON.stringify(c.id)})" style="margin-top:3px;background:rgba(0,87,255,.1);border:none;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;color:var(--B);cursor:pointer;width:100%">🔀 Déplacer</button>
         </div>`;
       });
@@ -1694,42 +1714,63 @@ function openSlotMob(wk,day){
 function renderGeoAlerts(w){
   const box=document.getElementById('geo-alerts');if(!box)return;
   const alerts=[];
-  const wks=getWks();
 
-  // ── ALERTE 1 : client placé sur une semaine différente de celle demandée ──
+  // ── ALERTE 1 : client décalé de sa semaine souhaitée ──
   const decales=DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===w&&c.wkSouh&&c.wkSouh!==w);
   if(decales.length){
     const noms=decales.map(c=>`<strong>${c.nom} ${c.prenom}</strong> (dem. S${c.wkSouh})`).join(', ');
     alerts.push(`<div class="geo-alert geo-alert-orange">
-      ⚠️ <strong>${decales.length} client(s) placé(s) sur S${w} alors qu'ils demandaient une autre semaine</strong> — à vérifier si rappel nécessaire :<br>
+      ⚠️ <strong>${decales.length} client(s) placé(s) sur S${w} alors qu'ils demandaient une autre semaine</strong><br>
       <span style="font-size:11px;margin-top:4px;display:block">${noms}</span>
     </div>`);
   }
 
-  // ── ALERTE 2 : journée géographiquement incohérente ──
+  // ── ALERTE 2 : journée incohérente — clients dans des directions opposées ──
   for(let d=0;d<5;d++){
     const dayClients=DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===w&&c.jour===d);
     if(dayClients.length<2)continue;
-    // Calculer distance max entre les clients de la journée
-    let maxDist=0;
-    let pairVilles='';
+
+    // Distance max entre clients de la journée
+    let maxDist=0,pairVilles='';
     for(let i=0;i<dayClients.length;i++){
       for(let j=i+1;j<dayClients.length;j++){
-        const dist=geoDistance(dayClients[i].cp,dayClients[j].cp);
-        if(dist>maxDist){
-          maxDist=dist;
-          pairVilles=`${dayClients[i].ville} ↔ ${dayClients[j].ville}`;
-        }
+        const dist=geoDistance(dayClients[i].cp||'18000',dayClients[j].cp||'18000');
+        if(dist>maxDist){maxDist=dist;pairVilles=`${dayClients[i].ville} ↔ ${dayClients[j].ville}`;}
       }
     }
-    // Seuil : si 2 clients sont à plus de 80km l'un de l'autre dans la même journée
     if(maxDist>80){
       alerts.push(`<div class="geo-alert geo-alert-red">
-        📍 <strong>${DAYS[d]} S${w} : journée géographiquement dispersée</strong> — distance max ${Math.round(maxDist)} km (${pairVilles})<br>
-        <span style="font-size:11px;margin-top:4px;display:block">Envisagez de déplacer certains clients via le planning</span>
+        📍 <strong>${DAYS[d]} S${w} : journée dispersée — ${Math.round(maxDist)} km entre clients</strong> (${pairVilles})<br>
+        <span style="font-size:11px;margin-top:4px;display:block">Utilisez 🔀 Déplacer pour regrouper géographiquement</span>
+      </div>`);
+    }
+
+    // ── ALERTE 3 : clients dans des zones directionnelles opposées le même jour ──
+    const idealDays=dayClients.map(c=>({c,ideal:idealDayForCp(c.cp||'18000')}));
+    const wrongDay=idealDays.filter(x=>x.ideal!==d);
+    if(wrongDay.length>0&&wrongDay.length<dayClients.length){
+      const noms=wrongDay.map(x=>`<strong>${x.c.nom} ${x.c.prenom}</strong> (→ ${ZONE_DAY_NAMES[x.ideal]})`).join(', ');
+      alerts.push(`<div class="geo-alert geo-alert-orange">
+        🧭 <strong>${DAYS[d]} S${w} : direction incohérente</strong><br>
+        <span style="font-size:11px;margin-top:4px;display:block">${noms} — ces clients sont dans la zone d'un autre jour selon les réglages</span>
       </div>`);
     }
   }
+
+  // ── ALERTE 4 : client isolé > 100km sans voisins ce jour ──
+  const weekClients=DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===w);
+  weekClients.forEach(c=>{
+    const dist=distFromBourges(c.cp||'18000');
+    if(dist<100)return;
+    const sameDay=weekClients.filter(x=>x.jour===c.jour&&x.id!==c.id);
+    const closeSameDay=sameDay.filter(x=>geoDistance(x.cp||'18000',c.cp||'18000')<40);
+    if(closeSameDay.length===0){
+      alerts.push(`<div class="geo-alert geo-alert-orange">
+        🚗 <strong>${c.nom} ${c.prenom}</strong> — ${Math.round(dist)} km de Bourges, isolé ${DAYS[c.jour]} S${w}<br>
+        <span style="font-size:11px;margin-top:4px;display:block">Tournée longue (~${Math.round(dist*2)} km A/R) sans regroupement. Chercher un autre client dans la même zone.</span>
+      </div>`);
+    }
+  });
 
   box.innerHTML=alerts.join('');
 }
@@ -2651,56 +2692,306 @@ function genererRapport(){
    Centroïdes approximatifs par CP (2 premiers chiffres = département)
    Coordonnées en degrés décimaux lat/lng
 */
-const DEPT_COORDS = {
-  '18':[47.08,2.40],'58':[47.05,3.50],'03':[46.35,3.30],
-  '71':[46.65,4.55],'45':[47.90,2.15],'23':[45.85,2.10],
-  '63':[45.75,3.10],'36':[46.60,1.55],'37':[47.25,0.70],
-  '89':[47.80,3.55],'21':[47.30,5.05],'41':[47.65,1.40],
+/* ════════════════════════════════════════════════════════
+   MOTEUR GÉO PRÉCIS — Coordonnées par CP commune
+   Rayon opérationnel Bourges ~80km
+   ════════════════════════════════════════════════════════ */
+
+const BOURGES_LAT = 47.0833, BOURGES_LNG = 2.3983;
+
+// Coordonnées précises par CP (communes du Cher + limitrophes)
+const CP_COORDS = {
+  // ── Cher (18) ──
+  '18000':[47.0833,2.3983], // Bourges
+  '18100':[47.2220,2.0690], // Vierzon
+  '18200':[46.7228,2.5048], // Saint-Amand-Montrond
+  '18110':[47.5628,2.4153], // Argent-sur-Sauldre
+  '18120':[47.4637,2.8543], // Léré
+  '18130':[47.1607,2.7299], // Baugy
+  '18140':[46.9150,2.6695], // Saint-Just
+  '18150':[46.9317,2.9969], // La Guerche-sur-l'Aubois
+  '18160':[46.6602,2.5006], // Lignières
+  '18170':[47.4866,2.3440], // Aubigny-sur-Nère
+  '18180':[47.1476,2.2267], // Mehun-sur-Yèvre
+  '18190':[47.3380,2.8305], // Neuilly-en-Sancerre
+  '18210':[47.1009,1.9803], // Saint-Hilaire-de-Court
+  '18220':[47.2060,2.5370], // Les Aix-d'Angillon
+  '18230':[47.1177,2.3442], // Saint-Doulchard
+  '18240':[47.0569,2.4751], // Sainte-Solange
+  '18250':[47.3010,2.5716], // Henrichemont
+  '18260':[46.8268,2.5578], // Saint-Pierre-les-Étieux
+  '18270':[47.3329,2.8392], // Sancerre
+  '18300':[46.9946,2.2552], // Saint-Florent-sur-Cher
+  '18320':[46.9852,2.0781], // Charost
+  '18330':[47.0226,2.6046], // Coeur-de-France (Lury)
+  '18340':[46.9344,2.4043], // Levet
+  '18350':[47.0002,2.8906], // Ménetou-Couture
+  '18360':[46.9158,2.6007], // Rians
+  '18370':[46.8558,2.3097], // Châteauneuf-sur-Cher
+  '18380':[47.0267,2.3289], // La Chapelle-Saint-Ursin
+  '18390':[47.0629,2.3148], // Osmoy
+  '18410':[47.5628,2.4153], // Argent-sur-Sauldre (bis)
+  '18420':[47.1557,1.9432], // Massay
+  '18430':[46.7943,2.2290], // Loye-sur-Arnon
+  '18440':[46.5935,2.4721], // Bruère-Allichamps
+  '18450':[47.1787,2.1814], // Foëcy
+  '18460':[47.0764,2.9890], // Marseilles-les-Aubigny
+  '18470':[46.9282,3.1603], // Magny-Cours
+  '18480':[46.9150,2.6695], // Saint-Just (bis)
+  '18490':[47.2199,2.6781], // Morogues
+  '18500':[47.1476,2.2267], // Mehun-sur-Yèvre (bis)
+  '18510':[47.1847,1.9948], // Méry-sur-Cher
+  '18520':[47.1894,2.0207], // Neuvy-sur-Barangeon
+  '18530':[46.7512,2.6740], // Charenton-du-Cher
+  '18550':[47.0769,2.4419], // Saint-Germain-du-Puy
+  '18560':[47.4210,2.4430], // Ivoy-le-Pré
+  '18570':[47.3542,2.5301], // La Chapelotte
+  '18580':[47.1394,2.4753], // Saint-Éloy-de-Gy
+  '18590':[47.1139,2.1540], // Saint-Georges-sur-la-Prée
+  '18600':[46.8974,3.0390], // Sancoins
+  '18700':[47.4866,2.3440], // Aubigny-sur-Nère (bis)
+  '18800':[47.1476,2.2267], // Mehun (bis)
+
+  // ── Nièvre (58) — Nord-Est ──
+  '58000':[46.9897,3.1572], // Nevers
+  '58100':[46.7380,3.5150], // Cosne-Cours-sur-Loire
+  '58110':[47.2671,3.5154], // Donzy
+  '58120':[46.9557,3.5160], // Château-Chinon
+  '58130':[47.1338,3.5160], // Clamecy
+  '58140':[47.0500,3.8000], // Lormes
+  '58150':[47.1500,3.2000], // Pouilly-sur-Loire
+  '58160':[47.2000,3.4000], // La Charité-sur-Loire
+  '58170':[47.3000,3.3000], // Prémery
+  '58200':[47.0500,3.6500], // Corbigny
+  '58300':[47.3000,3.7000], // Varzy
+  '58400':[46.5500,3.8000], // La Machine
+  '58500':[47.4500,3.4500], // Entrains-sur-Nohain
+
+  // ── Allier (03) — Sud ──
+  '03000':[46.5607,3.3317], // Moulins
+  '03100':[46.3485,3.4182], // Montluçon
+  '03110':[46.5596,3.0081], // Souvigny
+  '03150':[46.6690,3.5340], // Varennes-sur-Allier
+  '03160':[46.3680,3.0020], // Commentry
+  '03200':[46.4010,3.5690], // Vichy
+  '03230':[46.5360,3.1960], // Cusset
+  '03240':[46.4080,2.9230], // Le Donjon
+  '03300':[46.3200,3.3400], // Cusset/Vichy
+  '03400':[46.1710,3.3480], // Riom-ès-Montagnes
+  '03500':[46.5600,3.3300], // Saint-Pourçain-sur-Sioule
+
+  // ── Indre (36) — Ouest/Sud-Ouest ──
+  '36000':[46.6059,1.6912], // Châteauroux
+  '36100':[46.9282,1.5590], // Issoudun
+  '36110':[46.4760,1.6980], // Levroux
+  '36120':[46.4990,1.9900], // Ardentes
+  '36130':[46.7530,1.4280], // Déols
+  '36140':[46.5100,1.4820], // Saint-Genou
+  '36150':[46.7610,1.9630], // Neuvy-Saint-Sépulchre
+  '36160':[46.5960,1.8880], // Mers-sur-Indre
+  '36170':[46.5060,1.7660], // Buzançais
+  '36200':[46.4280,1.5350], // Argenton-sur-Creuse
+  '36210':[46.7600,1.5100], // La Châtre
+  '36220':[47.0030,1.7450], // Vatan
+  '36230':[47.0800,1.5380], // Saint-Maur
+  '36240':[46.6870,1.7960], // Ardentes
+  '36250':[46.8860,2.1040], // Saint-Christophe-en-Bazelle
+  '36260':[46.8130,1.3220], // Reuilly
+  '36300':[46.6690,1.4020], // Le Blanc
+  '36400':[46.7620,2.2080], // La Chapelle-Saint-Laurian
+  '36500':[46.7060,1.0100], // Argenton (Eguzon)
+  '36600':[46.9400,1.3040], // Valençay
+
+  // ── Loir-et-Cher (41) — Nord-Ouest ──
+  '41000':[47.5866,1.3352], // Blois
+  '41100':[47.6520,1.6520], // Vendôme
+  '41110':[47.4000,1.5550], // Saint-Aignan
+  '41120':[47.4690,1.3420], // Les Montils
+  '41130':[47.7620,1.4250], // Lavardin
+  '41140':[47.4130,1.4700], // Noyers-sur-Cher
+  '41150':[47.3300,1.5700], // Pontlevoy
+  '41160':[47.5050,1.6020], // Morée
+  '41170':[47.5740,1.4690], // Mondoubleau
+  '41180':[47.6590,1.5590], // Herbault
+  '41200':[47.5020,1.3500], // Romorantin-Lanthenay
+  '41210':[47.4440,1.7060], // Neung-sur-Beuvron
+  '41220':[47.2870,1.6960], // Saint-Laurent-Nouan
+  '41230':[47.5020,2.0230], // Selles-sur-Cher
+  '41240':[47.3300,1.7080], // Lamotte-Beuvron
+  '41250':[47.6900,1.2100], // Bracieux
+  '41260':[47.3200,1.3700], // La Ferté-Imbault
+  '41270':[47.4750,1.4890], // Thésée
+  '41290':[47.2400,1.6700], // Nouan-le-Fuzelier
+  '41300':[47.7300,1.3400], // Vendôme (Villiers)
+  '41350':[47.4080,1.7520], // Vineuil
+  '41400':[47.5500,1.6400], // Vendôme (Montoire)
+  '41500':[47.4990,1.2000], // Mer
+  '41600':[47.5200,1.1500], // Lamotte (Beaugency)
+  '41700':[47.3800,1.2500], // Contres
+
+  // ── Loiret (45) — Nord ──
+  '45000':[47.9029,1.9039], // Orléans
+  '45100':[47.9029,1.9039], // Orléans (bis)
+  '45110':[47.6960,2.1820], // Châteauneuf-sur-Loire
+  '45120':[47.8010,2.4610], // Châlette-sur-Loing
+  '45130':[47.7410,2.6040], // Meung-sur-Loire
+  '45140':[47.8630,2.3530], // Saint-Jean-de-Braye
+  '45150':[47.9640,2.5010], // Pithiviers
+  '45160':[47.7540,2.5030], // Olivet
+  '45170':[47.9960,2.2310], // Neuville-aux-Bois
+  '45190':[47.7410,2.0270], // Beaugency
+  '45200':[47.9800,2.7680], // Montargis
+  '45210':[47.8680,1.7710], // Férolles-Attilly
+  '45220':[47.8550,2.8830], // Châtillon-Coligny
+  '45230':[47.9790,1.7030], // Chilleurs-aux-Bois
+  '45240':[47.6960,1.8440], // La Ferté-Saint-Aubin
+  '45250':[47.7550,2.2980], // Briare
+  '45260':[47.6770,1.6770], // Lorris
+  '45270':[47.8250,1.6360], // Marcilly-en-Villette
+  '45280':[47.9710,2.4220], // Dreux
+  '45290':[47.7460,1.5530], // Nogent-sur-Vernisson
+  '45300':[47.8650,2.6300], // Pithi versailles
+  '45400':[47.8980,2.0240], // Fleury-les-Aubrais
+  '45500':[47.9660,2.3080], // Gien
+  '45600':[47.9150,2.3150], // Sully-sur-Loire
+  '45700':[47.7760,1.9220], // Villemandeur
+
+  // ── Creuse (23) — Sud-Ouest ──
+  '23000':[46.1669,1.8671], // Guéret
+  '23100':[46.3490,2.2300], // La Souterraine
+  '23110':[46.0370,2.1650], // Aubusson
+  '23120':[46.2760,1.9230], // Auzances
+  '23130':[46.4200,2.0250], // La Courtine
+  '23150':[46.3400,1.6690], // Ahun
+  '23160':[46.1710,1.6830], // Chénérailles
+  '23200':[46.2320,2.0920], // Aubusson
+  '23210':[46.2130,1.7550], // Bussière-Dunoise
+  '23220':[46.3450,1.9240], // Bonnat
+  '23230':[46.1560,2.3540], // Felletin
+  '23240':[46.0490,2.2890], // Le Grand-Bourg
+  '23250':[46.4900,1.8980], // La Souterraine (Dun)
+  '23260':[46.0780,1.5760], // Evaux-les-Bains
+  '23270':[46.5200,2.1470], // Guéret (Parsac)
+  '23300':[46.4710,2.2960], // La Châtre-l'Anglin
+  '23400':[46.3300,2.3720], // Bourganeuf
+  '23500':[46.2290,1.6540], // Saint-Hilaire-le-Château
+  '23600':[46.3600,2.5150], // Royère-de-Vassivière
+};
+
+// Coordonnées par département pour les CP hors base
+const DEPT_COORDS_FALLBACK = {
+  '18':[47.08,2.40],'58':[46.99,3.16],'03':[46.56,3.33],
+  '36':[46.61,1.69],'41':[47.59,1.34],'45':[47.90,2.15],
+  '23':[46.17,1.87],'63':[45.75,3.10],'71':[46.65,4.55],
+  '89':[47.80,3.55],'21':[47.30,5.05],'37':[47.25,0.70],
   '28':[48.45,1.50],'86':[46.55,0.40],'72':[47.95,0.20],
-  '69':[45.75,4.85],'42':[45.45,4.40],'43':[45.05,3.90],
   '15':[45.05,2.75],'19':[45.35,2.00],'87':[45.85,1.25],
-  '16':[45.65,0.15],'17':[45.75,-0.65],'79':[46.55,-0.35],
-  '85':[46.65,-1.45],'44':[47.25,-1.60],'49':[47.45,-0.60],
-  '53':[48.05,-0.75],'72':[47.95,0.20],'61':[48.55,0.10],
-  '14':[49.15,-0.35],'50':[49.15,-1.40],'27':[49.15,1.15],
-  '76':[49.45,1.10],'60':[49.40,2.45],'80':[49.90,2.30],
-  '02':[49.55,3.60],'08':[49.75,4.70],'51':[49.05,4.35],
-  '10':[48.30,4.10],'52':[48.10,5.20],'55':[48.95,5.40],
-  '54':[48.70,6.20],'57':[49.10,6.85],'67':[48.55,7.75],
-  '68':[47.75,7.35],'25':[47.25,6.05],'39':[46.65,5.55],
-  '70':[47.65,6.15],'90':[47.65,6.85],'01':[46.00,5.35],
-  '74':[45.95,6.45],'73':[45.55,6.55],'38':[45.15,5.70],
-  '26':[44.75,4.95],'07':[44.75,4.40],'04':[44.05,6.25],
-  '05':[44.70,6.35],'06':[43.70,7.25],'83':[43.45,6.10],
-  '13':[43.35,5.40],'84':[44.05,5.05],'30':[43.95,4.35],
-  '34':[43.60,3.85],'11':[43.20,2.35],'66':[42.70,2.90],
-  '09':[42.95,1.60],'31':[43.60,1.45],'32':[43.65,0.60],
-  '65':[43.10,0.15],'64':[43.30,-0.40],'40':[43.90,-0.75],
-  '47':[44.35,0.60],'33':[44.85,-0.60],'24':[45.10,0.75],
-  '46':[44.65,1.75],'12':[44.35,2.60],'48':[44.50,3.50],
-  '82':[44.00,1.35],'81':[43.75,2.15],'12':[44.35,2.60],
 };
 
 function cpToCoords(cp){
-  const dept=(cp||'').substring(0,2);
-  return DEPT_COORDS[dept]||[47.08,2.40]; // default Bourges
+  const c=(cp||'18000').trim();
+  if(CP_COORDS[c]) return CP_COORDS[c];
+  const dept=c.substring(0,2);
+  return DEPT_COORDS_FALLBACK[dept]||[BOURGES_LAT,BOURGES_LNG];
 }
 
 function geoDistance(cp1,cp2){
   const [lat1,lng1]=cpToCoords(cp1);
   const [lat2,lng2]=cpToCoords(cp2);
+  const R=6371;
   const dlat=(lat2-lat1)*Math.PI/180;
   const dlng=(lng2-lng1)*Math.PI/180;
   const a=Math.sin(dlat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dlng/2)**2;
-  return 6371*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); // km
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-// Score géo d'un technicien pour un jour donné : distance moyenne entre cp client et clients déjà placés ce jour
+// Angle depuis Bourges (0°=Nord, 90°=Est, 180°=Sud, 270°=Ouest)
+function geoAngle(cp){
+  const [lat,lng]=cpToCoords(cp);
+  const dlat=lat-BOURGES_LAT;
+  const dlng=lng-BOURGES_LNG;
+  // atan2 : angle depuis le nord, sens horaire
+  let angle=Math.atan2(dlng,dlat)*180/Math.PI;
+  if(angle<0)angle+=360;
+  return angle; // 0=N, 90=E, 180=S, 270=O
+}
+
+// Distance depuis Bourges
+function distFromBourges(cp){
+  return geoDistance('18000',cp);
+}
+
+/* ════ ZONES DIRECTIONNELLES ════
+   DB.zones = [
+     {day:0, label:'Nord-Est',  angleMin:0,   angleMax:90,  color:'#0057FF'},
+     {day:1, label:'Est',       angleMin:90,  angleMax:180, color:'#7C3AED'},
+     {day:2, label:'Sud',       angleMin:180, angleMax:270, color:'#059669'},
+     {day:3, label:'Ouest',     angleMin:270, angleMax:360, color:'#D97706'},
+     {day:4, label:'Local 18',  angleMin:0,   angleMax:360, maxDist:30, color:'#DC2626'},
+   ]
+   Chaque zone = un jour de la semaine.
+   Priorité : zone locale (maxDist) > secteur angulaire.
+*/
+
+function getZones(){
+  // Zones par défaut si pas encore configurées
+  if(!DB.zones||!DB.zones.length){
+    DB.zones=[
+      {day:0,label:'Nord (45, 58)',  angleMin:315, angleMax:45,  color:'#0057FF'},
+      {day:1,label:'Est (58, 03)',   angleMin:45,  angleMax:135, color:'#7C3AED'},
+      {day:2,label:'Sud (03, 23)',   angleMin:135, angleMax:225, color:'#059669'},
+      {day:3,label:'Ouest (36, 41)', angleMin:225, angleMax:315, color:'#D97706'},
+      {day:4,label:'Local Cher (18)',angleMin:0,   angleMax:360, maxDist:35, color:'#DC2626'},
+    ];
+  }
+  return DB.zones;
+}
+
+// Retourne le jour idéal pour un CP donné selon les zones configurées
+function idealDayForCp(cp){
+  const dist=distFromBourges(cp);
+  const angle=geoAngle(cp);
+  const zones=getZones();
+
+  // 1. Zone locale en priorité (si client très proche)
+  const local=zones.find(z=>z.maxDist&&dist<=z.maxDist);
+  if(local)return local.day;
+
+  // 2. Secteur angulaire
+  for(const z of zones){
+    if(z.maxDist)continue; // zone locale déjà traitée
+    const lo=z.angleMin, hi=z.angleMax;
+    // Gère les secteurs qui traversent 0° (ex: 315→45)
+    const inSector = lo<=hi ? (angle>=lo&&angle<hi) : (angle>=lo||angle<hi);
+    if(inSector)return z.day;
+  }
+  // Fallback : jour avec le moins de clients ce CP
+  return 0;
+}
+
+// Score géo d'un slot : distance entre le CP client et le barycentre des clients déjà placés ce jour
 function techGeoScore(wk,day,techId,cp){
-  const existing=slotC(wk,day,techId);
-  if(!existing.length)return 999; // pas encore de clients = distance max (on préfère remplir un tech qui a déjà une zone)
-  const avgDist=existing.reduce((s,c)=>s+geoDistance(cp,c.cp),0)/existing.length;
+  const existing=DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===wk&&c.jour===day&&c.techId===techId);
+  if(!existing.length)return 999;
+  const avgDist=existing.reduce((s,c)=>s+geoDistance(cp,c.cp||'18000'),0)/existing.length;
   return avgDist;
+}
+
+// Score de cohérence d'un jour pour un client :
+// 0 = parfait (jour idéal selon zone), +100 = mauvaise direction
+function dayDirectionScore(cp,day){
+  const ideal=idealDayForCp(cp);
+  if(ideal===day)return 0;
+  // Pénalité proportionnelle à la distance angulaire entre les deux jours
+  const zones=getZones();
+  const idealZone=zones.find(z=>z.day===ideal);
+  const candidateZone=zones.find(z=>z.day===day);
+  if(!idealZone||!candidateZone)return 50;
+  // Calcul distance angulaire entre centres des deux zones
+  const midAngle=z=>(z.maxDist?180:((z.angleMin+z.angleMax)/2+360)%360);
+  const a1=midAngle(idealZone), a2=midAngle(candidateZone);
+  const diff=Math.min(Math.abs(a1-a2),360-Math.abs(a1-a2));
+  return Math.round(diff/3.6); // 0-100
 }
 
 // Trouver le meilleur slot (wk+jour+tech) pour un client
@@ -2708,30 +2999,36 @@ function techGeoScore(wk,day,techId,cp){
 function findBestSlot(client, wks, preferWk){
   const pi=PRESTA[client.presta]||{h:1,techs:1};
   const cp=client.cp||'18000';
+  const dist=distFromBourges(cp);
   let best=null;
 
-  // ── Priorités de scoring ──
+  // ── Score combiné ──
   // 1. JOUR DEMANDÉ (éliminatoire si contrainte stricte)
-  // 2. REGROUPEMENT : même jour que d'autres clients de même zone géo
-  // 3. SEMAINE demandée (bonus fort)
-  // 4. GÉO : proximité des autres clients du même jour
+  // 2. DIRECTION : jour idéal selon zone géo configurée
+  // 3. REGROUPEMENT : même CP ou même zone déjà ce jour
+  // 4. SEMAINE demandée (bonus fort)
   // 5. CHARGE : ne pas surcharger un technicien
 
   function slotScore(wk,d,techId,constraintScore){
     const charge=slotH(wk,d,techId);
-    const geo=techGeoScore(wk,d,techId,cp);
-    const geoNorm=geo>=999?50:Math.min(geo,150);
-    // Bonus fort si d'autres clients de même CP dept sont déjà ce jour
-    const dept=(cp||'').substring(0,2);
+    // Score direction : 0=parfait, 100=mauvaise direction
+    const dirScore=dayDirectionScore(cp,d);
+    // Score regroupement : clients déjà placés ce jour proches géo
+    const geoProx=techGeoScore(wk,d,techId,cp);
+    const geoNorm=geoProx>=999?30:Math.min(geoProx,80);
+    // Bonus si clients de même zone ce jour (tous techs confondus)
     const sameZoneDay=DB.clients.filter(x=>
       x.saison===saison&&x.planifie&&x.wkPl===wk&&x.jour===d&&
-      (x.cp||'').substring(0,2)===dept&&x.id!==client.id
+      idealDayForCp(x.cp||'18000')===idealDayForCp(cp)&&
+      x.id!==client.id
     ).length;
-    const zoneBonus=sameZoneDay*(-30); // très fort bonus regroupement zone
-    // Bonus si tech3 déjà actif ce jour (pour grouper les Niv.2)
+    const zoneBonus=sameZoneDay*(-25);
+    // Pénalité > 100km si client isolé (pas d'autres clients ce jour dans la zone)
+    const far100 = dist>100&&sameZoneDay===0 ? 50 : 0;
+    // Bonus tech3 doublure
     const dbl=DB.techs[2];
     const tech3Active=pi.needsDoublure&&dbl?slotH(wk,d,dbl.id)>0?-20:0:0;
-    return charge*8 + geoNorm*0.3 + tech3Active + zoneBonus + (constraintScore||0)*5;
+    return dirScore*2 + charge*8 + geoNorm*0.3 + zoneBonus + far100 + tech3Active + (constraintScore||0)*5;
   }
 
   // ── Semaines candidates ──
@@ -2758,20 +3055,20 @@ function findBestSlot(client, wks, preferWk){
     return true;
   };
 
-  // ── Jours candidats : jours demandés EN PREMIER, puis les autres ──
+  // ── Jours candidats : jours demandés EN PREMIER, puis triés par zone directionnelle ──
   function getDayCandidates(wkNum){
     const joursOk=client.joursOk&&client.joursOk.length>0?client.joursOk:null;
     if(joursOk){
-      // Jours demandés strictement
-      const demanded=joursOk.map(j=>j.day).filter(d=>d>=0&&d<5);
-      return demanded; // éliminatoire
+      return joursOk.map(j=>j.day).filter(d=>d>=0&&d<5);
     }
-    // Pas de contrainte jour : trier par nombre de clients déjà placés ce jour+zone
-    const dept=(cp||'').substring(0,2);
+    // Tri : jour idéal de la zone en 1er, puis par score directionnel croissant
     return[0,1,2,3,4].sort((a,b)=>{
-      const za=DB.clients.filter(x=>x.saison===saison&&x.planifie&&x.wkPl===wkNum&&x.jour===a&&(x.cp||'').substring(0,2)===dept).length;
-      const zb=DB.clients.filter(x=>x.saison===saison&&x.planifie&&x.wkPl===wkNum&&x.jour===b&&(x.cp||'').substring(0,2)===dept).length;
-      return zb-za; // préférer le jour avec le plus de voisins de même zone
+      const sa=dayDirectionScore(cp,a);
+      const sb=dayDirectionScore(cp,b);
+      // Bonus si d'autres clients de même zone déjà ce jour
+      const za=DB.clients.filter(x=>x.saison===saison&&x.planifie&&x.wkPl===wkNum&&x.jour===a&&idealDayForCp(x.cp||'18000')===idealDayForCp(cp)).length;
+      const zb=DB.clients.filter(x=>x.saison===saison&&x.planifie&&x.wkPl===wkNum&&x.jour===b&&idealDayForCp(x.cp||'18000')===idealDayForCp(cp)).length;
+      return (sa-zb*20)-(sb-za*20);
     });
   }
 
@@ -3110,6 +3407,105 @@ function renderTechs(){
     if(te)te.value=cfg[`${k}To`]||dt;
   });
   updateWkRangeLabels();
+  renderZonesConfig();
+}
+
+/* ════ CONFIGURATION ZONES DIRECTIONNELLES ════ */
+const ZONE_DAY_NAMES=['Lundi','Mardi','Mercredi','Jeudi','Vendredi'];
+
+function renderZonesConfig(){
+  const cont=document.getElementById('zones-config-list');
+  if(!cont)return;
+  const zones=getZones();
+  cont.innerHTML=zones.map((z,i)=>{
+    const dayPts=getZoneSamplePoints(z);
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:9px;border:2px solid ${z.color}20;margin-bottom:8px">
+      <div style="width:10px;height:40px;border-radius:3px;background:${z.color};flex-shrink:0"></div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-weight:800;font-size:13px;color:${z.color}">${ZONE_DAY_NAMES[z.day]}</span>
+          <input type="text" value="${z.label}" onchange="updateZoneLabel(${i},this.value)"
+            style="font-size:12px;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;background:#fff;flex:1;max-width:180px">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${z.maxDist?
+            `<span style="background:${z.color}18;color:${z.color};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">📍 Local ≤ ${z.maxDist}km</span>
+             <input type="number" value="${z.maxDist}" min="10" max="80" onchange="updateZoneMaxDist(${i},this.value)"
+               style="width:60px;font-size:12px;border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:#fff"> km max`
+            :
+            `<span style="font-size:11px;color:var(--t2)">Angle :</span>
+             <input type="number" value="${z.angleMin}" min="0" max="359" onchange="updateZoneAngle(${i},'min',this.value)"
+               style="width:55px;font-size:12px;border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:#fff">°
+             <span style="font-size:11px;color:var(--t2)">→</span>
+             <input type="number" value="${z.angleMax}" min="1" max="360" onchange="updateZoneAngle(${i},'max',this.value)"
+               style="width:55px;font-size:12px;border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:#fff">°
+             <span style="font-size:10px;color:var(--t3)">(0=N 90=E 180=S 270=O)</span>`
+          }
+        </div>
+        ${dayPts.length?`<div style="font-size:10px;color:var(--t3);margin-top:4px">Communes : ${dayPts.join(', ')}</div>`:''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button onclick="moveZoneDay(${i},-1)" style="background:none;border:1px solid var(--bdr);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px" title="Décaler vers lundi">↑</button>
+        <button onclick="moveZoneDay(${i},1)"  style="background:none;border:1px solid var(--bdr);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px" title="Décaler vers vendredi">↓</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Retourne quelques villes représentatives de la zone pour info
+function getZoneSamplePoints(zone){
+  const samples=Object.entries(CP_COORDS).filter(([cp])=>cp.length===5).map(([cp,coords])=>{
+    const dist=geoDistance('18000',cp);
+    if(dist<5||dist>85)return null;
+    const angle=geoAngle(cp);
+    if(zone.maxDist){
+      if(dist<=zone.maxDist)return{cp,dist};
+    } else {
+      const lo=zone.angleMin,hi=zone.angleMax;
+      const inSector=lo<=hi?(angle>=lo&&angle<hi):(angle>=lo||angle<hi);
+      if(inSector)return{cp,dist};
+    }
+    return null;
+  }).filter(Boolean).sort((a,b)=>a.dist-b.dist);
+  // Trouver les villes connues
+  const known={'18000':'Bourges','18100':'Vierzon','18200':'St-Amand','18110':'Argent','18130':'Baugy',
+    '18150':'La Guerche','18160':'Lignières','18170':'Aubigny','18270':'Sancerre','18600':'Sancoins',
+    '58000':'Nevers','58100':'Cosne','03000':'Moulins','03100':'Montluçon','03200':'Vichy',
+    '36000':'Châteauroux','36100':'Issoudun','41000':'Blois','41200':'Romorantin',
+    '45000':'Orléans','23000':'Guéret'};
+  const result=[];
+  for(const s of samples){
+    if(known[s.cp]){result.push(known[s.cp]+' ('+Math.round(s.dist)+'km)');}
+    if(result.length>=3)break;
+  }
+  return result;
+}
+
+function updateZoneLabel(i,v){getZones()[i].label=v;markDirty();autosave();}
+function updateZoneMaxDist(i,v){getZones()[i].maxDist=parseInt(v)||35;renderZonesConfig();markDirty();autosave();}
+function updateZoneAngle(i,key,v){
+  const z=getZones()[i];
+  if(key==='min')z.angleMin=parseInt(v)||0;
+  else z.angleMax=parseInt(v)||360;
+  renderZonesConfig();markDirty();autosave();
+}
+function moveZoneDay(i,dir){
+  const zones=getZones();
+  const z=zones[i];
+  const newDay=((z.day+dir)+5)%5;
+  // Swap with existing zone on that day
+  const other=zones.find(x=>x.day===newDay&&x!==z);
+  if(other)other.day=z.day;
+  z.day=newDay;
+  DB.zones=[...zones].sort((a,b)=>a.day-b.day);
+  renderZonesConfig();markDirty();autosave();
+}
+function resetZones(){
+  if(!confirm('Réinitialiser les zones aux valeurs par défaut ?'))return;
+  DB.zones=null;
+  getZones(); // rebuild defaults
+  renderZonesConfig();markDirty();autosave();
+  toast('🧭 Zones réinitialisées','ok');
 }
 function addTech(){
   DB.techs.push({id:Date.now(),nom:'Nouveau technicien',color:'#'+Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0')});
@@ -3178,6 +3574,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   loadFromLS();
   if(!DB.annee)DB.annee=new Date().getFullYear();
   if(!DB.cfg)DB.cfg={};
+  if(!DB.zones||!DB.zones.length)getZones(); // initialise zones par défaut
   rebuildWKS();
 
   // Auto-detect & set season
