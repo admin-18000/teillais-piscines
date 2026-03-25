@@ -845,8 +845,44 @@ input[type="file"]{display:none}
     <div class="mb" id="mc-bdy"></div>
     <div class="mf">
       <a id="mc-sms" href="#" style="display:none;background:linear-gradient(135deg,#059669,#10B981);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700">💬 SMS</a>
+      <button class="btn bs sm" id="mc-move" style="display:none" onclick="closeM('m-client');setTimeout(()=>openMove(currentClientId),100)">🔀 Déplacer</button>
       <button class="btn bd sm" id="mc-del">🗑 Supprimer</button>
       <button class="btn bs" onclick="closeM('m-client')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DÉPLACER CLIENT -->
+<div class="ov" id="m-move">
+  <div class="modal">
+    <div class="mh"><div class="mt">🔀 Déplacer le client</div><button class="mx" onclick="closeM('m-move')">×</button></div>
+    <div class="mb">
+      <div class="sinfo" id="move-info" style="margin-bottom:12px"></div>
+      <div class="fg" style="gap:10px">
+        <div class="fgrp">
+          <label class="fl">Semaine</label>
+          <select class="fs" id="move-wk" style="font-size:16px" onchange="updateMoveTechOptions()"></select>
+        </div>
+        <div class="fgrp">
+          <label class="fl">Jour</label>
+          <select class="fs" id="move-day" style="font-size:16px" onchange="updateMoveTechOptions()">
+            <option value="0">Lundi</option>
+            <option value="1">Mardi</option>
+            <option value="2">Mercredi</option>
+            <option value="3">Jeudi</option>
+            <option value="4">Vendredi</option>
+          </select>
+        </div>
+        <div class="fgrp">
+          <label class="fl">Technicien</label>
+          <select class="fs" id="move-tech" style="font-size:16px"></select>
+        </div>
+      </div>
+      <div id="move-cap-warn" style="display:none;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:10px;font-size:12px;margin-top:8px;color:#92400E"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bs" onclick="closeM('m-move')">Annuler</button>
+      <button class="btn bp" onclick="doMove()">Déplacer ✅</button>
     </div>
   </div>
 </div>
@@ -966,6 +1002,7 @@ let pendSlot=null;
 let clFilt='all',clSrch='';
 let fP=null,fO={},fWk=null,fWks=[],fConvenance=false,fJours=[];
 let _dirty=false;
+let currentClientId=null;
 
 /* ════ AUTOSAVE ════ */
 function markDirty(){
@@ -1424,7 +1461,9 @@ function setFilt(f,el){
 }
 function showCM(id){
   const c=DB.clients.find(x=>x.id===id);if(!c)return;
+  currentClientId=id;
   const tech=c.techId?DB.techs.find(t=>t.id===c.techId):null;
+  const doublure=c.doublureId?DB.techs.find(t=>t.id===c.doublureId):null;
   const pi=PRESTA[c.presta]||{};
   document.getElementById('mc-ttl').textContent=c.prenom+' '+c.nom;
   document.getElementById('mc-bdy').innerHTML=`
@@ -1434,13 +1473,17 @@ function showCM(id){
       <div style="grid-column:1/-1"><div class="fl">Adresse</div><div style="margin-top:3px">${[c.adresse,c.cp,c.ville].filter(Boolean).join(' ')}</div></div>
       <div><div class="fl">Saison</div><div style="margin-top:3px">${{ouverture:'🌊 Ouverture',entretien:'🧴 Entretien',hivernage:'❄️ Hivernage'}[c.saison]||c.saison}</div></div>
       <div><div class="fl">Prestation</div><div style="margin-top:3px"><span class="bdg b-${pi.css||'s'}">${pi.lbl||c.presta}</span>${c.opts&&c.opts.remise?'<span class="bdg" style="background:#FFF7ED;color:#92400E;margin-left:4px">−15%</span>':''}</div></div>
-      <div><div class="fl">Montant</div><div style="margin-top:3px;font-family:-apple-system,'Segoe UI',BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-size:17px;font-weight:800;color:var(--B)">${c.montant.toFixed(2)} €</div></div>
-      <div><div class="fl">Semaine souhaitée</div><div style="margin-top:3px">${c.wkSouh?'S'+c.wkSouh:'—'}</div></div>
-      <div><div class="fl">Planifié</div><div style="margin-top:3px">${c.planifie?`✅ S${c.wkPl} ${DAYS[c.jour]||''} — ${tech?tech.nom:''}`:'⏳ Non planifié'}</div></div>
+      <div><div class="fl">Montant</div><div style="margin-top:3px;font-size:17px;font-weight:800;color:var(--B)">${c.montant.toFixed(2)} €</div></div>
+      <div><div class="fl">Semaine souhaitée</div><div style="margin-top:3px">${c.wksSouh&&c.wksSouh.length>1?'S'+c.wksSouh.join('+S'):c.wkSouh?'S'+c.wkSouh:'—'}</div></div>
+      <div><div class="fl">Planifié</div><div style="margin-top:3px">${c.planifie?`✅ S${c.wkPl} ${DAYS[c.jour]||''} — ${tech?`<span style="color:${tech.color};font-weight:700">${tech.nom}</span>`:''}${doublure?` + <span style="color:${doublure.color};font-weight:700">${doublure.nom}</span>`:''}` :'⏳ Non planifié'}</div></div>
       ${c.notes?`<div style="grid-column:1/-1"><div class="fl">Notes client</div><div style="margin-top:3px;background:var(--bg);padding:7px;border-radius:6px;font-size:12px">${c.notes}</div></div>`:''}
       ${c.notesTech?`<div style="grid-column:1/-1"><div class="fl">Notes technicien</div><div style="margin-top:3px;background:#FFF7ED;padding:7px;border-radius:6px;font-size:12px;border-left:3px solid #F59E0B">${c.notesTech}</div></div>`:''}
     </div>`;
   document.getElementById('mc-del').onclick=()=>{delC(c.id);closeM('m-client');};
+
+  // Bouton Déplacer — visible si déjà planifié
+  const moveBtn=document.getElementById('mc-move');
+  if(moveBtn) moveBtn.style.display=c.planifie?'':'none';
 
   // SMS confirmation button
   const smsBtn=document.getElementById('mc-sms');
@@ -1553,8 +1596,9 @@ function renderPlanning(){
         html+=`<div class="rcard ${pi.css||'simple'}" onclick="event.stopPropagation();showCM(${JSON.stringify(c.id)})">
           <span class="rx" onclick="event.stopPropagation();unplan(${JSON.stringify(c.id)})">×</span>
           <div class="rn">${c.nom} ${c.prenom.charAt(0)}.</div>
-          <div class="rt">${pi.lbl||''}${dblTech2?` <span style="color:${dblTech2.color};font-size:9px">+${dblTech2.nom.split(' ')[0]}</span>`:''}</div>
+          <div class="rt">${pi.lbl||''}${dblTech2?` <span style="color:${dblTech2.color};font-size:9px;font-weight:700">+${dblTech2.nom.split(' ')[0]}</span>`:''}</div>
           <div class="rc">${c.ville} · ${c.cp.substring(0,2)} · ${pi.h||1}h · <span style="color:var(--B);font-weight:700">${arrH}</span></div>
+          <button onclick="event.stopPropagation();openMove(${JSON.stringify(c.id)})" style="margin-top:3px;background:rgba(0,87,255,.1);border:none;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;color:var(--B);cursor:pointer;width:100%">🔀 Déplacer</button>
         </div>`;
       });
       html+='</div>';
@@ -1615,15 +1659,22 @@ function renderPlanningMobile(){
       dayClients.forEach(c=>{
         const pi=PRESTA[c.presta]||{};
         const tech=DB.techs.find(t=>t.id===c.techId);
+        const dbl=c.doublureId?DB.techs.find(t=>t.id===c.doublureId):null;
         mhtml+=`<div class="mob-rcard mob-rcard-${pi.css||'simple'}" onclick="showCM(${JSON.stringify(c.id)})">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
             <span style="font-weight:800;font-size:14px">${c.nom} ${c.prenom.charAt(0)}.</span>
-            <button onclick="event.stopPropagation();unplan(${JSON.stringify(c.id)})" style="background:rgba(0,0,0,.08);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--t2)">✕</button>
+            <div style="display:flex;gap:4px">
+              <button onclick="event.stopPropagation();openMove(${JSON.stringify(c.id)})" style="background:rgba(0,87,255,.1);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;color:var(--B);font-weight:700">🔀</button>
+              <button onclick="event.stopPropagation();unplan(${JSON.stringify(c.id)})" style="background:rgba(0,0,0,.08);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--t2)">✕</button>
+            </div>
           </div>
           <div style="font-size:12px;color:var(--t2);margin-bottom:4px">${pi.lbl||c.presta} · ${pi.h||1}h</div>
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:11px;color:var(--t3)">📍 ${c.ville} (${c.cp.substring(0,2)})</span>
-            ${tech?`<span style="font-size:11px;font-weight:700;color:${tech.color}">● ${tech.nom.split(' ')[0]}</span>`:''}
+            <span style="font-size:11px;font-weight:700">
+              ${tech?`<span style="color:${tech.color}">● ${tech.nom.split(' ')[0]}</span>`:''}
+              ${dbl?`<span style="color:${dbl.color}"> + ${dbl.nom.split(' ')[0]}</span>`:''}
+            </span>
           </div>
         </div>`;
       });
@@ -1685,9 +1736,21 @@ function renderGeoAlerts(w){
 
 function fmtD(s,off){const d=new Date(s);d.setDate(d.getDate()+off);return`${d.getDate()}/${d.getMonth()+1}`;}
 function slotC(wk,day,techId){
-  return DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===wk&&c.jour===day&&c.techId===techId);
+  // Retourne les clients affectés à ce tech ce jour
+  // Pour le Tech3 (doublure) : inclut aussi les Niv.2 où il est doublure
+  const direct=DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===wk&&c.jour===day&&c.techId===techId);
+  const asDoublure=DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===wk&&c.jour===day&&c.doublureId===techId&&c.techId!==techId);
+  // Merge sans doublon
+  const ids=new Set(direct.map(c=>c.id));
+  const merged=[...direct,...asDoublure.filter(c=>!ids.has(c.id))];
+  return merged;
 }
-function slotH(wk,day,techId){return slotC(wk,day,techId).reduce((s,c)=>s+(PRESTA[c.presta]?.h||1),0);}
+function slotH(wk,day,techId){
+  // Pour la capacité : on compte les heures du tech en tant que principal uniquement
+  // (le doublure partage le même créneau, on ne double pas les heures)
+  return DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===wk&&c.jour===day&&c.techId===techId)
+    .reduce((s,c)=>s+(PRESTA[c.presta]?.h||1),0);
+}
 
 function chgWk(d){
   const wks=getWks(),idx=wks.findIndex(w=>w.num===planWk);
@@ -1791,9 +1854,90 @@ function doAssign(){
 }
 function unplan(id){
   const c=DB.clients.find(x=>x.id===id);if(!c)return;
-  c.planifie=false;c.techId=null;c.jour=null;c.wkPl=null;
+  c.planifie=false;c.techId=null;c.jour=null;c.wkPl=null;c.doublureId=null;
   markDirty();autosave();updateBadges();renderPlanning();renderDash();
   toast('📋 Retiré du planning','');
+}
+
+/* ════ DÉPLACER CLIENT ════ */
+let pendMove=null;
+function openMove(id){
+  const c=DB.clients.find(x=>x.id===id);if(!c||!c.planifie)return;
+  pendMove=id;
+  const pi=PRESTA[c.presta]||{};
+  const tech=c.techId?DB.techs.find(t=>t.id===c.techId):null;
+  const dbl=c.doublureId?DB.techs.find(t=>t.id===c.doublureId):null;
+  const info=document.getElementById('move-info');
+  if(info){
+    info.className='sinfo';
+    info.innerHTML=`<strong>${c.prenom} ${c.nom}</strong> · ${pi.lbl||c.presta}<br>
+      Actuellement : <strong>S${c.wkPl} ${DAYS[c.jour]||''}</strong> · ${tech?`<span style="color:${tech.color}">${tech.nom}</span>`:''}${dbl?` + <span style="color:${dbl.color}">${dbl.nom}</span>`:''}`;
+  }
+  // Populate semaine select
+  const wkSel=document.getElementById('move-wk');
+  if(wkSel){
+    wkSel.innerHTML=getWks().map(w=>`<option value="${w.num}" ${w.num===c.wkPl?'selected':''}>${'S'+w.num+' ('+w.lbl+')'}</option>`).join('');
+  }
+  // Pre-select current day
+  const daySel=document.getElementById('move-day');
+  if(daySel) daySel.value=c.jour||0;
+  updateMoveTechOptions();
+  document.getElementById('m-move').classList.add('open');
+}
+
+function updateMoveTechOptions(){
+  const id=pendMove;
+  if(!id)return;
+  const c=DB.clients.find(x=>x.id===id);if(!c)return;
+  const pi=PRESTA[c.presta]||{h:1};
+  const wk=parseInt(document.getElementById('move-wk')?.value)||planWk;
+  const day=parseInt(document.getElementById('move-day')?.value)||0;
+  const techSel=document.getElementById('move-tech');
+  const warn=document.getElementById('move-cap-warn');
+  if(!techSel)return;
+  // Build eligible techs (exclude doublure for Niv.2 main slot)
+  const eligibles=pi.needsDoublure?DB.techs.slice(0,2):DB.techs;
+  techSel.innerHTML=eligibles.map(t=>{
+    const cur=slotH(wk,day,t.id);
+    const avail=MAX_H-cur+(c.wkPl===wk&&c.jour===day&&c.techId===t.id?(pi.h||1):0);
+    const ok=avail>=(pi.h||1);
+    return`<option value="${t.id}" ${!ok?'disabled':''} ${t.id===c.techId&&wk===c.wkPl&&day===c.jour?'selected':''}>${t.nom}${ok?` (${avail}h dispo)`:'  (complet)'}</option>`;
+  }).join('');
+  // Capacity warning
+  const selTechId=parseInt(techSel.value)||0;
+  if(selTechId){
+    const cu=slotH(wk,day,selTechId);
+    const extra=(c.wkPl===wk&&c.jour===day&&c.techId===selTechId)?(pi.h||1):0;
+    const newH=cu+(pi.h||1)-extra;
+    if(warn){
+      if(newH>MAX_H){warn.style.display='block';warn.textContent='⚠ Capacité dépassée ('+newH+'h/'+MAX_H+'h) — impossible';}
+      else if(newH>MAX_H*0.85){warn.style.display='block';warn.textContent='⚠ Journée chargée : '+newH+'h/'+MAX_H+'h';}
+      else warn.style.display='none';
+    }
+  }
+}
+
+function doMove(){
+  const id=pendMove;if(!id)return;
+  const c=DB.clients.find(x=>x.id===id);if(!c)return;
+  const pi=PRESTA[c.presta]||{h:1};
+  const wk=parseInt(document.getElementById('move-wk')?.value)||0;
+  const day=parseInt(document.getElementById('move-day')?.value)||0;
+  const techId=parseInt(document.getElementById('move-tech')?.value)||0;
+  if(!techId)return toast('⚠ Choisir un technicien','err');
+  // Check capacity (excluding current slot)
+  const extra=(c.wkPl===wk&&c.jour===day&&c.techId===techId)?(pi.h||1):0;
+  const newH=slotH(wk,day,techId)+(pi.h||1)-extra;
+  if(newH>MAX_H)return toast('⚠ Capacité insuffisante','err');
+  // Unplan then replan
+  c.planifie=true;c.wkPl=wk;c.jour=day;c.techId=techId;
+  // Handle doublure for Niv.2
+  if(pi.needsDoublure&&DB.techs[2])c.doublureId=DB.techs[2].id;
+  else c.doublureId=null;
+  closeM('m-move');pendMove=null;
+  markDirty();autosave();updateBadges();renderPlanning();renderDash();
+  const tech=DB.techs.find(t=>t.id===techId);
+  toast('🔀 '+c.prenom+' '+c.nom+' → '+DAYS[day]+' S'+wk+(tech?' · '+tech.nom:''),'ok');
 }
 function renderUnplaced(){
   const panel=document.getElementById('unplaced');
@@ -2566,29 +2710,35 @@ function findBestSlot(client, wks, preferWk){
   const cp=client.cp||'18000';
   let best=null;
 
-  // ── Score combiné ──
-  // Priorité 1 : contraintes client (jour/période) — éliminatoire
-  // Priorité 2 : regrouper Niv.2 sur jours où tech3 est déjà utilisé
-  // Priorité 3 : répartir la charge entre jours (éviter l'empilement)
-  // Priorité 4 : proximité géo
+  // ── Priorités de scoring ──
+  // 1. JOUR DEMANDÉ (éliminatoire si contrainte stricte)
+  // 2. REGROUPEMENT : même jour que d'autres clients de même zone géo
+  // 3. SEMAINE demandée (bonus fort)
+  // 4. GÉO : proximité des autres clients du même jour
+  // 5. CHARGE : ne pas surcharger un technicien
+
   function slotScore(wk,d,techId,constraintScore){
     const charge=slotH(wk,d,techId);
     const geo=techGeoScore(wk,d,techId,cp);
     const geoNorm=geo>=999?50:Math.min(geo,150);
+    // Bonus fort si d'autres clients de même CP dept sont déjà ce jour
+    const dept=(cp||'').substring(0,2);
+    const sameZoneDay=DB.clients.filter(x=>
+      x.saison===saison&&x.planifie&&x.wkPl===wk&&x.jour===d&&
+      (x.cp||'').substring(0,2)===dept&&x.id!==client.id
+    ).length;
+    const zoneBonus=sameZoneDay*(-30); // très fort bonus regroupement zone
     // Bonus si tech3 déjà actif ce jour (pour grouper les Niv.2)
     const dbl=DB.techs[2];
     const tech3Active=pi.needsDoublure&&dbl?slotH(wk,d,dbl.id)>0?-20:0:0;
-    return charge*10 + geoNorm*0.4 + tech3Active + (constraintScore||0)*5;
+    return charge*8 + geoNorm*0.3 + tech3Active + zoneBonus + (constraintScore||0)*5;
   }
 
   // ── Semaines candidates ──
-  // Si convenance : toutes les semaines disponibles, triées par charge
-  // Sinon : semaines demandées en priorité, puis voisines
   let wkCandidates;
   if(client.convenance){
-    wkCandidates=[...wks]; // toutes, triées plus bas par charge totale
+    wkCandidates=[...wks];
   } else if(client.wksSouh&&client.wksSouh.length>0){
-    // Semaines demandées d'abord, puis débordement ±2
     const demanded=wks.filter(w=>client.wksSouh.includes(w.num));
     const nearby=wks.filter(w=>!client.wksSouh.includes(w.num)&&
       client.wksSouh.some(sw=>Math.abs(w.num-sw)<=2));
@@ -2608,16 +2758,31 @@ function findBestSlot(client, wks, preferWk){
     return true;
   };
 
+  // ── Jours candidats : jours demandés EN PREMIER, puis les autres ──
+  function getDayCandidates(wkNum){
+    const joursOk=client.joursOk&&client.joursOk.length>0?client.joursOk:null;
+    if(joursOk){
+      // Jours demandés strictement
+      const demanded=joursOk.map(j=>j.day).filter(d=>d>=0&&d<5);
+      return demanded; // éliminatoire
+    }
+    // Pas de contrainte jour : trier par nombre de clients déjà placés ce jour+zone
+    const dept=(cp||'').substring(0,2);
+    return[0,1,2,3,4].sort((a,b)=>{
+      const za=DB.clients.filter(x=>x.saison===saison&&x.planifie&&x.wkPl===wkNum&&x.jour===a&&(x.cp||'').substring(0,2)===dept).length;
+      const zb=DB.clients.filter(x=>x.saison===saison&&x.planifie&&x.wkPl===wkNum&&x.jour===b&&(x.cp||'').substring(0,2)===dept).length;
+      return zb-za; // préférer le jour avec le plus de voisins de même zone
+    });
+  }
+
   for(const wk of wkCandidates){
-    for(let d=0;d<5;d++){
-      // ── Vérifier contraintes client (jour/période) ──
+    const dayCandidates=getDayCandidates(wk.num);
+    for(const d of dayCandidates){
       const constraint=creneauOk(client,wk.num,d);
       if(!constraint.ok)continue;
-
       const isSuggested=!isInPreferred(wk.num);
 
       if(pi.needsDoublure){
-        // Niv.2 : Tech principal + Tech3 doublure obligatoire
         const dbl=DB.techs[2];
         if(!dbl)continue;
         if(slotH(wk.num,d,dbl.id)+pi.h>MAX_H)continue;
@@ -2625,25 +2790,22 @@ function findBestSlot(client, wks, preferWk){
         if(!mains.length)continue;
         const scored=mains.map(t=>({t,s:slotScore(wk.num,d,t.id,constraint.score)}))
           .sort((a,b)=>a.s-b.s);
-        const score=scored[0].s-(isSuggested?0:100); // bonus pour semaines demandées
+        const score=scored[0].s-(isSuggested?0:150);
         if(!best||score<best.score)
           best={wk:wk.num,day:d,techId:scored[0].t.id,doublureId:dbl.id,score,isSuggested};
       } else {
-        // Niv.1 : Tech1, Tech2, OU Tech3 si pas en doublure ce jour
-        // Tech3 disponible pour Niv.1 si pas déjà assigné en doublure ce jour
         const dbl=DB.techs[2];
-        const tech3HasNiv2=dbl?DB.clients.some(c=>
-          c.saison===saison&&c.planifie&&c.wkPl===wk.num&&c.jour===d&&
-          (c.doublureId===dbl.id)):false;
+        const tech3HasNiv2=dbl?DB.clients.some(x=>
+          x.saison===saison&&x.planifie&&x.wkPl===wk.num&&x.jour===d&&
+          x.doublureId===dbl.id):false;
         const eligibles=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
-        // Add tech3 if available (not in doublure this day)
         if(dbl&&!tech3HasNiv2&&slotH(wk.num,d,dbl.id)+pi.h<=MAX_H){
           eligibles.push(dbl);
         }
         if(!eligibles.length)continue;
         const scored=eligibles.map(t=>({t,s:slotScore(wk.num,d,t.id,constraint.score)}))
           .sort((a,b)=>a.s-b.s);
-        const score=scored[0].s-(isSuggested?0:100);
+        const score=scored[0].s-(isSuggested?0:150);
         if(!best||score<best.score)
           best={wk:wk.num,day:d,techId:scored[0].t.id,score,isSuggested};
       }
@@ -2701,48 +2863,70 @@ function assignDirect(clientId,wk,day,techId,doublureId){
 /* ════ AUTO-PLACEMENT ════ */
 function autoAll(){
   let placed=0;
+  const wks=getWks();
   const up=clSaison().filter(c=>!c.planifie)
     .sort((a,b)=>{
-      // Priorité 1 : les plus contraints d'abord (jours précis > semaines précises > convenance)
+      // P1 : contraintes jour précis en premier (plus contraint = traité en premier)
       const contraA=(a.joursOk&&a.joursOk.length>0)?0:(a.wksSouh&&a.wksSouh.length>0)?1:a.convenance?3:2;
       const contraB=(b.joursOk&&b.joursOk.length>0)?0:(b.wksSouh&&b.wksSouh.length>0)?1:b.convenance?3:2;
       if(contraA!==contraB)return contraA-contraB;
-      // Priorité 2 : Niv.2 (doublure) avant Niv.1 pour grouper les jours tech3
-      const h_a=PRESTA[a.presta]?.needsDoublure?1:0;
-      const h_b=PRESTA[b.presta]?.needsDoublure?1:0;
-      if(h_a!==h_b)return h_b-h_a;
-      // Priorité 3 : semaine la plus tôt
-      return(a.wkSouh||99)-(b.wkSouh||99);
+      // P2 : Niv.2 avant Niv.1 (pour préserver les créneaux doublure)
+      const niv2A=PRESTA[a.presta]?.needsDoublure?1:0;
+      const niv2B=PRESTA[b.presta]?.needsDoublure?1:0;
+      if(niv2A!==niv2B)return niv2B-niv2A;
+      // P3 : même zone géo (département) regroupés ensemble
+      const deptA=(a.cp||'').substring(0,2);
+      const deptB=(b.cp||'').substring(0,2);
+      if(deptA!==deptB)return deptA.localeCompare(deptB);
+      // P4 : semaine la plus tôt
+      const wkA=a.wksSouh&&a.wksSouh.length>0?Math.min(...a.wksSouh):(a.wkSouh||99);
+      const wkB=b.wksSouh&&b.wksSouh.length>0?Math.min(...b.wksSouh):(b.wkSouh||99);
+      return wkA-wkB;
     });
-  const wks=getWks();
   for(const c of up){
-    const minWk=c.wkSouh&&wks.some(w=>w.num===c.wkSouh)?c.wkSouh:wks[0]?.num;
+    const minWk=c.wksSouh&&c.wksSouh.length>0?Math.min(...c.wksSouh):
+      (c.wkSouh&&wks.some(w=>w.num===c.wkSouh)?c.wkSouh:wks[0]?.num);
     if(!minWk)continue;
     const wksFrom=wks.filter(w=>w.num>=minWk);
-    const best=findBestSlot(c,wksFrom,c.wkSouh);
+    const best=findBestSlot(c,wksFrom,minWk);
     if(best){
       c.planifie=true;c.wkPl=best.wk;c.jour=best.day;c.techId=best.techId;
       if(best.doublureId)c.doublureId=best.doublureId;
+      else c.doublureId=null;
       placed++;
     }
   }
   markDirty();autosave();updateBadges();renderDash();renderPlanning();
   if(document.getElementById('view-clients').classList.contains('on'))renderClients();
-  toast(`⚡ Auto-planif géo : ${placed} client(s) placé(s)`,'ok');
+  toast(`⚡ Auto-planif : ${placed} client(s) placé(s) — regroupement jour+zone actif`,'ok');
 }
 
 function autoWeek(){
   const w=planWk;let placed=0;
   const wks=getWks().filter(wk=>wk.num===w);
-  const up=clSaison().filter(c=>!c.planifie&&(!c.wkSouh||c.wkSouh===w))
-    .sort((a,b)=>(PRESTA[b.presta]?.h||1)-(PRESTA[a.presta]?.h||1));
+  // Inclure aussi les clients sans semaine précise (convenance)
+  const up=clSaison().filter(c=>!c.planifie&&(
+    c.convenance||!c.wkSouh||c.wkSouh===w||
+    (c.wksSouh&&c.wksSouh.includes(w))
+  )).sort((a,b)=>{
+    const niv2A=PRESTA[a.presta]?.needsDoublure?1:0;
+    const niv2B=PRESTA[b.presta]?.needsDoublure?1:0;
+    if(niv2A!==niv2B)return niv2B-niv2A;
+    const deptA=(a.cp||'').substring(0,2);
+    const deptB=(b.cp||'').substring(0,2);
+    return deptA.localeCompare(deptB);
+  });
   for(const c of up){
-    const best=findBestSlot(c,getWks().filter(wk=>wk.num===w),w);
-    if(best){c.planifie=true;c.wkPl=best.wk;c.jour=best.day;c.techId=best.techId;
-      if(best.doublureId)c.doublureId=best.doublureId;placed++;}
+    const best=findBestSlot(c,wks,w);
+    if(best){
+      c.planifie=true;c.wkPl=best.wk;c.jour=best.day;c.techId=best.techId;
+      if(best.doublureId)c.doublureId=best.doublureId;
+      else c.doublureId=null;
+      placed++;
+    }
   }
   markDirty();autosave();updateBadges();renderPlanning();renderDash();
-  toast(`⚡ S${w} géo : ${placed} client(s)`,'ok');
+  toast(`⚡ S${w} : ${placed} client(s) placé(s)`,'ok');
 }
 
 /* ════ ZONES GEO ════ */
@@ -3028,6 +3212,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     const _presta=urlParams.get('presta')||'';
     const _wk=parseInt(urlParams.get('wk'))||0;
     const _saison=urlParams.get('saison')||'ouverture';
+    const _wks=urlParams.get('wks')||'';       // ← parse AVANT replaceState
+    const _conv=urlParams.get('conv')||'';      // ← idem
+    const _remise=urlParams.get('remise')||'';  // ← idem
     // Clean URL immediately
     window.history.replaceState({},'',window.location.pathname);
     // Apply after short delay to let app initialize
@@ -3038,7 +3225,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       const tab=document.querySelector('.stab.'+_saison);
       if(tab)setSaison(_saison,tab);
       // 3. Fill text fields
-      const sv=(id,val)=>{const e=document.getElementById(id);if(e&&val)e.value=val;};
+      const sv=(id,val)=>{const e=document.getElementById(id);if(e&&val!==undefined&&val!=='')e.value=val;};
       sv('f-nom',_nom);
       sv('f-prenom',_prenom);
       sv('f-adresse',_adresse);
@@ -3047,50 +3234,58 @@ document.addEventListener('DOMContentLoaded',()=>{
       sv('f-tel',_tel);
       sv('f-email',_email);
       sv('f-notes',_notes);
+      // 3b. Remise
+      if(_remise==='1'){
+        const ri=document.getElementById('f-remise');
+        if(ri){ri.checked=true;calcSum();}
+      }
       // 4. Set prestation AFTER saison (saison resets fP)
       if(_presta){
-        const el=document.getElementById('op-'+_presta);
-        if(el&&!el.classList.contains('disabled'))selP(_presta,el);
+        // Try direct id first, then with prefix
+        let el=document.getElementById('op-'+_presta);
+        if(!el) el=document.getElementById('op-hiv-'+_presta);
+        if(el&&!el.classList.contains('disabled')) selP(_presta,el);
       }
-      // 5. Set weeks (multi)
-      const _wks=urlParams.get('wks');
+      // 5. Set weeks (multi) — use pre-parsed _wks
       if(_wks){
         _wks.split(',').forEach(w=>{
           const num=parseInt(w);
           if(num){
+            // Rebuild week selector first, then click
             document.querySelectorAll('.wb').forEach(b=>{
-              if(b.querySelector('.wn')&&b.querySelector('.wn').textContent==='S'+num)
+              if(b.querySelector('.wn')&&b.querySelector('.wn').textContent==='S'+num&&!b.classList.contains('full'))
                 pickWk(num,b);
             });
           }
         });
       } else if(_wk){
         document.querySelectorAll('.wb').forEach(b=>{
-          if(b.querySelector('.wn')&&b.querySelector('.wn').textContent==='S'+_wk)
+          if(b.querySelector('.wn')&&b.querySelector('.wn').textContent==='S'+_wk&&!b.classList.contains('full'))
             pickWk(_wk,b);
         });
       }
-      // 6. Convenance
-      const _conv=urlParams.get('conv');
+      // 6. Convenance — use pre-parsed _conv
       if(_conv==='1'){
         const fc=document.getElementById('f-convenance');
         if(fc){fc.checked=true;togConvenance(fc);}
       }
-      // Check if this client already exists (planned or not) and warn
-    const _existing=DB.clients.find(c=>
-      c.saison===(_saison||saison)&&(
-        (c.nom===_nom.toUpperCase()&&c.prenom===_prenom)||
-        (c.adresse&&_adresse&&c.adresse===_adresse)
-      )
-    );
-    if(_existing&&_existing.planifie){
-      toast('⚠ Ce client est déjà planifié S'+_existing.wkPl+' — la fiche sera mise à jour et déplanifiée si vous enregistrez','warn');
-    } else if(_existing){
-      toast('📥 Fiche existante rechargée — vérifiez et cliquez Enregistrer','ok');
-    } else {
-      toast('📥 Nouvelle fiche pré-remplie — vérifiez et cliquez Enregistrer','ok');
-    }
-    },400);
+      // 7. Check if client already exists and warn
+      const _existing=DB.clients.find(c=>
+        c.saison===(_saison||saison)&&(
+          (c.nom===_nom.toUpperCase()&&c.prenom===_prenom)||
+          (c.adresse&&_adresse&&c.adresse===_adresse)
+        )
+      );
+      if(_existing&&_existing.planifie){
+        toast('⚠ Ce client est déjà planifié S'+_existing.wkPl+' — la fiche sera mise à jour et déplanifiée si vous enregistrez','warn');
+      } else if(_existing){
+        toast('📥 Fiche existante rechargée — vérifiez et cliquez Enregistrer','ok');
+      } else {
+        toast('📥 Nouvelle fiche pré-remplie depuis le formulaire — vérifiez et cliquez Enregistrer','ok');
+      }
+      // Scroll to top
+      window.scrollTo(0,0);
+    },500);
   }
 
 
