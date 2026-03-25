@@ -482,7 +482,7 @@ input[type="file"]{display:none}
     <div class="ch"><div class="ct">🏊 Prestation — Ouverture</div></div>
     <div class="cb">
       <!-- PRESTATIONS PRINCIPALES -->
-      <div style="font-size:11px;font-weight:700;color:var(--B);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Choisir une prestation principale *</div>
+      <div style="font-size:11px;font-weight:700;color:var(--B);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Choisir une prestation *</div>
       <div class="ogrid">
         <div class="oc" id="op-simple" onclick="selP('simple',this)">
           <div class="ot">Niveau 1 — Simple</div>
@@ -494,15 +494,15 @@ input[type="file"]{display:none}
           <div class="op">390 €</div>
           <div class="od">Nettoyage fond+paroi · 2h · 2 tech</div>
         </div>
-      </div>
-      <!-- SUPPLÉMENT — visible seulement après sélection principale -->
-      <div id="ouv-active-section" style="display:none;margin-top:10px">
-        <div style="font-size:11px;font-weight:700;color:#D97706;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Supplément (optionnel)</div>
-        <div class="oc" id="op-active" onclick="selP('active',this)" style="border-style:dashed">
-          <div class="ot">Active sous abri <span style="font-size:10px;color:#D97706;font-weight:700">SUPPLÉMENT</span></div>
+        <div class="oc" id="op-active" onclick="selP('active',this)" style="border:2px solid #10B981">
+          <div class="ot">Niveau 3 — Sous abri</div>
           <div class="op">+195 €</div>
-          <div class="od">S'ajoute au Niveau 1 ou 2 · 1h supplémentaire</div>
+          <div class="od">S'ajoute au Niv.1 ou Niv.2 · +1h</div>
         </div>
+      </div>
+      <!-- Note Niveau 3 -->
+      <div id="ouv-active-section" style="display:none;margin-top:8px;background:#F0FDF4;border:1px solid #A7F3D0;border-radius:8px;padding:8px 12px;font-size:12px;color:#065F46">
+        ✅ <strong>Niveau 3 sélectionné</strong> — s'ajoute obligatoirement à un Niveau 1 ou 2. Le tarif s'additionne automatiquement.
       </div>
       <div class="divdr"></div>
       <!-- OPTIONS -->
@@ -791,18 +791,18 @@ input[type="file"]{display:none}
   <!-- ZONES DIRECTIONNELLES -->
   <div class="card" style="border:2px solid #0057FF">
     <div class="ch" style="background:#EFF6FF">
-      <div class="ct" style="color:#1D4ED8">🧭 Zones directionnelles par jour</div>
+      <div class="ct" style="color:#1D4ED8">🧭 Zones directionnelles par ville</div>
       <button class="btn bs sm" onclick="resetZones()">Réinitialiser</button>
     </div>
     <div class="cb">
       <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.5">
-        Chaque jour de la semaine est associé à une zone géographique autour de Bourges.<br>
-        L'algo place automatiquement chaque client sur le jour dont la zone correspond à sa direction.<br>
-        <strong>Objectif : moins de 100km par tournée, pas d'aller-retour Nord/Sud dans la même journée.</strong>
+        Chaque jour est associé à des <strong>villes de référence du Cher (18)</strong>.<br>
+        L'algo place chaque client sur le jour dont les villes sont les plus proches.<br>
+        Pour les clients hors du 18, l'angle depuis Bourges sert de repère secondaire.
       </div>
       <div id="zones-config-list"></div>
       <div style="margin-top:12px;padding:10px;background:#F0FDF4;border:1px solid #A7F3D0;border-radius:8px;font-size:12px;color:#065F46">
-        💡 <strong>Conseil :</strong> Vendredi = Local (Bourges et proches &lt;35km). Lundi/Mardi = zones éloignées opposées. Mercredi/Jeudi = zones intermédiaires.
+        💡 <strong>Conseil :</strong> Vendredi = Bourges et communes proches. Lundi/Mardi = communes au Nord et Nord-Est. Mercredi = Sud (St-Amand, Lignières). Jeudi = Ouest (Vierzon, St-Florent).
       </div>
     </div>
   </div>
@@ -1378,8 +1378,8 @@ function setSaison(s,btn){
   });
   fP=null;fO={};fWk=null;
   document.querySelectorAll('.oc').forEach(c=>c.classList.remove('sel'));
-  // Re-enable addon cards
-  const addons=isH?['op-hiv-actif']:['op-active'];
+  // Niv.3 (active) toujours accessible — seulement hiv-actif reste conditionnel
+  const addons=isH?['op-hiv-actif']:[];
   addons.forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('disabled');});
   // Cacher les sections suppléments au changement de saison
   const hs=document.getElementById('hiv-actif-section');if(hs)hs.style.display='none';
@@ -1485,18 +1485,15 @@ function selP(type,el){
   grps.forEach(id=>{const e=document.getElementById(id);if(e)e.classList.remove('sel');});
   fP=type;el.classList.add('sel');
 
-  // Afficher la section supplément SEULEMENT après sélection d'une prestation principale
-  const isMainH=isH&&!type.includes('actif');
-  const isMainO=!isH&&!isE&&!type.includes('active');
-  // Hivernage : afficher supplément actif
-  const hivSection=document.getElementById('hiv-actif-section');
-  if(hivSection) hivSection.style.display=isMainH?'block':'none';
-  // Ouverture : afficher supplément active sous abri
+  // Niveau 3 (active sous abri) : afficher note
   const ouvSection=document.getElementById('ouv-active-section');
-  if(ouvSection) ouvSection.style.display=isMainO?'block':'none';
+  if(ouvSection) ouvSection.style.display=(type==='active')?'block':'none';
 
-  // Si on clique sur un supplément, ne pas re-cacher la section
-  // (le supplément est déjà visible à ce stade)
+  // Hivernage actif : afficher section
+  const hivSection=document.getElementById('hiv-actif-section');
+  const isMainH=isH&&!type.includes('actif');
+  if(hivSection) hivSection.style.display=isMainH?'block':'none';
+
   showHint();calcSum();markDirty();
 }
 
@@ -1637,7 +1634,8 @@ function resetForm(){
   document.querySelectorAll('.oc').forEach(c=>c.classList.remove('sel'));
   document.querySelectorAll('.wb').forEach(b=>b.classList.remove('sel','hv','et'));
   document.querySelectorAll('.jour-check').forEach(c=>{c.checked=false;});
-  ['op-active','op-hiv-actif'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('disabled');});
+  // Niv.3 toujours visible — pas de disabled sur op-active
+  ['op-hiv-actif'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('disabled');});
   // Cacher les sections suppléments
   const hs=document.getElementById('hiv-actif-section');if(hs)hs.style.display='none';
   const os=document.getElementById('ouv-active-section');if(os)os.style.display='none';
@@ -1880,6 +1878,14 @@ function renderPlanning(){
           <div class="rn">${c.nom} ${c.prenom.charAt(0)}.</div>
           <div class="rt">${pi.lbl||''}${dblTech2?` <span style="color:${dblTech2.color};font-size:9px;font-weight:700">+${dblTech2.nom.split(' ')[0]}</span>`:''}</div>
           <div class="rc">${c.ville} · ${c.cp.substring(0,2)} · ${pi.h||1}h · <span style="color:var(--B);font-weight:700">${arrH}</span>${(()=>{const idealDay=idealDayForCp(c.cp||'18000');const z=getZones().find(x=>x.day===idealDay);const wrong=idealDay!==di;return wrong&&z?` <span style="color:${z.color};font-size:9px;font-weight:700" title="Zone idéale: ${ZONE_DAY_NAMES[idealDay]}">⚠${ZONE_DAY_NAMES[idealDay].substring(0,3)}</span>`:'';})()} </div>
+          ${(()=>{
+            // Badge si jour demandé non honoré
+            if(!c.joursOk||!c.joursOk.length)return'';
+            const demandeHonoree=c.joursOk.some(j=>j.day===di);
+            if(demandeHonoree)return'';
+            const joursNoms=c.joursOk.map(j=>DAYS[j.day]).join('/');
+            return`<div style="background:#FFF7ED;border:1px solid #F59E0B;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;color:#92400E;margin-top:2px">⚠️ Dem. ${joursNoms}</div>`;
+          })()}
           <button onclick="event.stopPropagation();openMove(${JSON.stringify(c.id)})" style="margin-top:4px;background:rgba(0,87,255,.12);border:1px solid rgba(0,87,255,.25);border-radius:5px;padding:4px 8px;font-size:11px;font-weight:700;color:var(--B);cursor:pointer;width:100%;min-height:28px">🔀 Déplacer</button>
         </div>`;
       });
@@ -1975,6 +1981,13 @@ function renderPlanningMobile(){
               ${dbl?`<span style="color:${dbl.color}"> + ${dbl.nom.split(' ')[0]}</span>`:''}
             </span>
           </div>
+          ${(()=>{
+            if(!c.joursOk||!c.joursOk.length)return'';
+            const demandeHonoree=c.joursOk.some(j=>j.day===di);
+            if(demandeHonoree)return'';
+            const joursNoms=c.joursOk.map(j=>DAYS[j.day]).join('/');
+            return`<div style="background:#FFF7ED;border:1px solid #F59E0B;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;color:#92400E;margin-top:4px">⚠️ Client dem. ${joursNoms}</div>`;
+          })()}
         </div>`;
       });
       mhtml+=`<button class="mob-add-full-btn" onclick="openSlotMob(${w},${di})">＋ Ajouter</button>`;
@@ -3201,51 +3214,98 @@ function distFromBourges(cp){
   return geoDistance('18000',cp);
 }
 
-/* ════ ZONES DIRECTIONNELLES ════
+/* ════ ZONES PAR VILLE (Cher 18) ════
    DB.zones = [
-     {day:0, label:'Nord-Est',  angleMin:0,   angleMax:90,  color:'#0057FF'},
-     {day:1, label:'Est',       angleMin:90,  angleMax:180, color:'#7C3AED'},
-     {day:2, label:'Sud',       angleMin:180, angleMax:270, color:'#059669'},
-     {day:3, label:'Ouest',     angleMin:270, angleMax:360, color:'#D97706'},
-     {day:4, label:'Local 18',  angleMin:0,   angleMax:360, maxDist:30, color:'#DC2626'},
+     {day:0, label:'Lundi',   villes:['Aubigny','Argent-sur-Sauldre',...], angleMin:315, angleMax:45,  color:'#0057FF'},
+     ...
    ]
-   Chaque zone = un jour de la semaine.
-   Priorité : zone locale (maxDist) > secteur angulaire.
+   Logique : un client est assigné au jour dont les villes de référence
+   sont les plus proches géographiquement.
+   Fallback : angle depuis Bourges pour clients hors 18.
 */
 
+// Villes de référence du Cher par jour — restent dans le 18
+const VILLES_PAR_JOUR = {
+  0: { // Lundi — Nord
+    label: 'Aubigny, Argent-sur-Sauldre',
+    cps: ['18170','18110','18410'],  // Aubigny, Argent, Vailly
+    angleMin:315, angleMax:45, color:'#0057FF'
+  },
+  1: { // Mardi — Nord-Est
+    label: 'Sancerre, Baugy, La Guerche',
+    cps: ['18270','18130','18150','18350'],
+    angleMin:45, angleMax:135, color:'#7C3AED'
+  },
+  2: { // Mercredi — Sud
+    label: 'Saint-Amand, Lignières, Sancoins',
+    cps: ['18200','18160','18600','18440'],
+    angleMin:135, angleMax:225, color:'#059669'
+  },
+  3: { // Jeudi — Ouest/Sud-Ouest
+    label: 'Vierzon, Issoudun, Saint-Florent',
+    cps: ['18100','18300','18320','18500'],
+    angleMin:225, angleMax:315, color:'#D97706'
+  },
+  4: { // Vendredi — Local Bourges
+    label: 'Bourges et proches',
+    cps: ['18000','18230','18380','18550','18180','18390'],
+    maxDist: 20, color:'#DC2626'
+  }
+};
+
 function getZones(){
-  // Zones par défaut si pas encore configurées
   if(!DB.zones||!DB.zones.length){
-    DB.zones=[
-      {day:0,label:'Nord (45, 58)',  angleMin:315, angleMax:45,  color:'#0057FF'},
-      {day:1,label:'Est (58, 03)',   angleMin:45,  angleMax:135, color:'#7C3AED'},
-      {day:2,label:'Sud (03, 23)',   angleMin:135, angleMax:225, color:'#059669'},
-      {day:3,label:'Ouest (36, 41)', angleMin:225, angleMax:315, color:'#D97706'},
-      {day:4,label:'Local Cher (18)',angleMin:0,   angleMax:360, maxDist:35, color:'#DC2626'},
-    ];
+    DB.zones=Object.entries(VILLES_PAR_JOUR).map(([day,z])=>({
+      day:parseInt(day),
+      label:z.label,
+      cps:[...z.cps],
+      angleMin:z.angleMin||0,
+      angleMax:z.angleMax||360,
+      maxDist:z.maxDist||null,
+      color:z.color
+    }));
   }
   return DB.zones;
 }
 
-// Retourne le jour idéal pour un CP donné selon les zones configurées
+// Jour idéal pour un CP donné
+// 1. Si CP dans la liste de villes d'un jour → ce jour
+// 2. Si CP dans le Cher (18) → jour dont les villes de référence sont les plus proches
+// 3. Fallback → angle depuis Bourges
 function idealDayForCp(cp){
-  const dist=distFromBourges(cp);
-  const angle=geoAngle(cp);
+  if(!cp)return 0;
   const zones=getZones();
+  const dept=cp.substring(0,2);
 
-  // 1. Zone locale en priorité (si client très proche)
+  // 1. Correspondance directe CP dans les villes de référence
+  for(const z of zones){
+    if(z.cps&&z.cps.includes(cp))return z.day;
+  }
+
+  // 2. Zone locale (maxDist) — priorité sur tout
+  const dist=distFromBourges(cp);
   const local=zones.find(z=>z.maxDist&&dist<=z.maxDist);
   if(local)return local.day;
 
-  // 2. Secteur angulaire
+  // 3. Si Cher (18) → proximité avec les villes de référence du jour
+  if(dept==='18'){
+    let bestDay=0,bestDist=Infinity;
+    for(const z of zones){
+      if(!z.cps||!z.cps.length||z.maxDist)continue;
+      const avgDist=z.cps.reduce((s,refCp)=>s+geoDistance(cp,refCp),0)/z.cps.length;
+      if(avgDist<bestDist){bestDist=avgDist;bestDay=z.day;}
+    }
+    return bestDay;
+  }
+
+  // 4. Hors 18 → angle depuis Bourges (fallback)
+  const angle=geoAngle(cp);
   for(const z of zones){
-    if(z.maxDist)continue; // zone locale déjà traitée
-    const lo=z.angleMin, hi=z.angleMax;
-    // Gère les secteurs qui traversent 0° (ex: 315→45)
-    const inSector = lo<=hi ? (angle>=lo&&angle<hi) : (angle>=lo||angle<hi);
+    if(z.maxDist)continue;
+    const lo=z.angleMin||0,hi=z.angleMax||360;
+    const inSector=lo<=hi?(angle>=lo&&angle<hi):(angle>=lo||angle<hi);
     if(inSector)return z.day;
   }
-  // Fallback : jour avec le moins de clients ce CP
   return 0;
 }
 
@@ -4181,36 +4241,34 @@ function renderZonesConfig(){
   if(!cont)return;
   const zones=getZones();
   cont.innerHTML=zones.map((z,i)=>{
-    const dayPts=getZoneSamplePoints(z);
-    return`<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:9px;border:2px solid ${z.color}20;margin-bottom:8px">
-      <div style="width:10px;height:40px;border-radius:3px;background:${z.color};flex-shrink:0"></div>
-      <div style="flex:1">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <span style="font-weight:800;font-size:13px;color:${z.color}">${ZONE_DAY_NAMES[z.day]}</span>
-          <input type="text" value="${z.label}" onchange="updateZoneLabel(${i},this.value)"
-            style="font-size:12px;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;background:#fff;flex:1;max-width:180px">
+    const villesLabel=z.cps?z.cps.map(cp=>{
+      const known={
+        '18000':'Bourges','18100':'Vierzon','18200':'St-Amand-Montrond',
+        '18110':'Argent-sur-Sauldre','18130':'Baugy','18150':'La Guerche',
+        '18160':'Lignières','18170':'Aubigny-sur-Nère','18180':'Mehun-sur-Yèvre',
+        '18230':'St-Doulchard','18270':'Sancerre','18300':'St-Florent-sur-Cher',
+        '18320':'Charost','18350':'Ménetou-Couture','18380':'La Chapelle-St-Ursin',
+        '18390':'Osmoy','18410':'Argent (bis)','18440':'Bruère-Allichamps',
+        '18500':'Mehun','18550':'St-Germain-du-Puy','18600':'Sancoins',
+      };
+      return known[cp]||cp;
+    }).join(', '):'';
+    const angleInfo=z.maxDist?
+      `📍 Local ≤ ${z.maxDist}km`:
+      `(angle ${z.angleMin||0}°→${z.angleMax||360}° pour clients hors 18)`;
+    return`<div style="padding:12px;background:var(--bg);border-radius:9px;border-left:4px solid ${z.color};margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="font-weight:800;font-size:14px;color:${z.color}">${ZONE_DAY_NAMES[z.day]}</span>
+        <div style="display:flex;gap:4px">
+          <button onclick="moveZoneDay(${i},-1)" style="background:none;border:1px solid var(--bdr);border-radius:4px;padding:1px 6px;cursor:pointer;font-size:11px">↑</button>
+          <button onclick="moveZoneDay(${i},1)"  style="background:none;border:1px solid var(--bdr);border-radius:4px;padding:1px 6px;cursor:pointer;font-size:11px">↓</button>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          ${z.maxDist?
-            `<span style="background:${z.color}18;color:${z.color};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">📍 Local ≤ ${z.maxDist}km</span>
-             <input type="number" value="${z.maxDist}" min="10" max="80" onchange="updateZoneMaxDist(${i},this.value)"
-               style="width:60px;font-size:12px;border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:#fff"> km max`
-            :
-            `<span style="font-size:11px;color:var(--t2)">Angle :</span>
-             <input type="number" value="${z.angleMin}" min="0" max="359" onchange="updateZoneAngle(${i},'min',this.value)"
-               style="width:55px;font-size:12px;border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:#fff">°
-             <span style="font-size:11px;color:var(--t2)">→</span>
-             <input type="number" value="${z.angleMax}" min="1" max="360" onchange="updateZoneAngle(${i},'max',this.value)"
-               style="width:55px;font-size:12px;border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:#fff">°
-             <span style="font-size:10px;color:var(--t3)">(0=N 90=E 180=S 270=O)</span>`
-          }
-        </div>
-        ${dayPts.length?`<div style="font-size:10px;color:var(--t3);margin-top:4px">Communes : ${dayPts.join(', ')}</div>`:''}
       </div>
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <button onclick="moveZoneDay(${i},-1)" style="background:none;border:1px solid var(--bdr);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px" title="Décaler vers lundi">↑</button>
-        <button onclick="moveZoneDay(${i},1)"  style="background:none;border:1px solid var(--bdr);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px" title="Décaler vers vendredi">↓</button>
+      <div style="font-size:13px;font-weight:600;color:var(--t);margin-bottom:4px">
+        🏘️ Villes de référence :
       </div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">${villesLabel||z.label}</div>
+      <div style="font-size:10px;color:var(--t3)">${angleInfo}</div>
     </div>`;
   }).join('');
 }
@@ -4264,11 +4322,11 @@ function moveZoneDay(i,dir){
   renderZonesConfig();markDirty();autosave();
 }
 function resetZones(){
-  if(!confirm('Réinitialiser les zones aux valeurs par défaut ?'))return;
+  if(!confirm('Réinitialiser les zones aux villes par défaut ?'))return;
   DB.zones=null;
-  getZones(); // rebuild defaults
+  getZones();
   renderZonesConfig();markDirty();autosave();
-  toast('🧭 Zones réinitialisées','ok');
+  toast('🧭 Zones réinitialisées aux villes du Cher','ok');
 }
 function addTech(){
   DB.techs.push({id:Date.now(),nom:'Nouveau technicien',color:'#'+Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0')});
