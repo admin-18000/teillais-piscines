@@ -350,7 +350,7 @@ input[type="file"]{display:none}
   <div class="stabs">
     <button class="stab ouverture active" onclick="setSaison('ouverture',this)" title="Ouvertures">🌊</button>
     <button class="stab entretien" onclick="setSaison('entretien',this)" title="Entretien">🧴</button>
-    <button class="stab hivernage" onclick="setSaison('hivernage',this)" title="Hivernages">❄️</button>
+    <button class="stab hivernage" onclick="saisonIndispo()" title="Hivernages — tarifs en cours de mise à jour">❄️</button>
   </div>
   <div class="hdr-acts">
     <div class="as-dot" id="as-dot"></div>
@@ -480,17 +480,48 @@ input[type="file"]{display:none}
   <div class="card" id="cp-ouv">
     <div class="ch"><div class="ct">🏊 Prestation — Ouverture</div></div>
     <div class="cb">
+      <!-- PRESTATIONS PRINCIPALES -->
+      <div style="font-size:11px;font-weight:700;color:var(--B);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Choisir une prestation principale *</div>
       <div class="ogrid">
-        <div class="oc" id="op-simple" onclick="selP('simple',this)"><div class="ot">Niveau 1</div><div class="op">240 €</div><div class="od">Ouverture simple · 1h · 1 tech</div></div>
-        <div class="oc" id="op-complete" onclick="selP('complete',this)"><div class="ot">Niveau 2</div><div class="op">390 €</div><div class="od">Ouverture complète · 2h · 2 tech</div></div>
-        <div class="oc disabled" id="op-active" onclick="selP('active',this)"><div class="ot">Active sous abri</div><div class="op">+195 €</div><div class="od">Supplément Niv.1 ou Niv.2 requis · 1h</div></div>
+        <div class="oc" id="op-simple" onclick="selP('simple',this)">
+          <div class="ot">Niveau 1 — Simple</div>
+          <div class="op">240 €</div>
+          <div class="od">Remise en route · 1h · 1 tech</div>
+        </div>
+        <div class="oc" id="op-complete" onclick="selP('complete',this)">
+          <div class="ot">Niveau 2 — Complète</div>
+          <div class="op">390 €</div>
+          <div class="od">Nettoyage fond+paroi · 2h · 2 tech</div>
+        </div>
+      </div>
+      <!-- SUPPLÉMENT — visible seulement après sélection principale -->
+      <div id="ouv-active-section" style="display:none;margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:#D97706;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Supplément (optionnel)</div>
+        <div class="oc" id="op-active" onclick="selP('active',this)" style="border-style:dashed">
+          <div class="ot">Active sous abri <span style="font-size:10px;color:#D97706;font-weight:700">SUPPLÉMENT</span></div>
+          <div class="op">+195 €</div>
+          <div class="od">S'ajoute au Niveau 1 ou 2 · 1h supplémentaire</div>
+        </div>
       </div>
       <div class="divdr"></div>
-      <div style="font-weight:800;font-size:11.5px;margin-bottom:10px;color:var(--t2)">OPTIONS</div>
+      <!-- OPTIONS -->
+      <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Options (cocher si besoin)</div>
       <div class="ogrid">
-        <div class="oc" id="op-electro" onclick="togO('electro',this)"><div class="ot">Option 2 — Électrolyseur</div><div class="op">40 €</div><div class="od">Remise en route électrolyseur / 3en1</div></div>
-        <div class="oc" id="op-sel" onclick="togO('sel',this)"><div class="ot">Option 3 — Sel</div><div class="op">17,50 €/sac</div><div class="od">Sel 25 kg &nbsp;<input type="number" id="f-sel-qty" min="1" max="20" value="1" onclick="event.stopPropagation()" oninput="calcSum()" style="width:36px;text-align:center;border:1px solid var(--bdr);border-radius:4px;padding:2px 4px;font-size:14px;background:#fff"> sac(s)</div></div>
-        <div class="oc" id="op-nettoyage" onclick="togO('nettoyage',this)"><div class="ot">Option 1 — Nettoyage</div><div class="op">Sur devis</div><div class="od">Nettoyage volets / bâches / abris</div></div>
+        <div class="oc" id="op-electro" onclick="togO('electro',this)">
+          <div class="ot">Électrolyseur / 3en1</div>
+          <div class="op">40 €</div>
+          <div class="od">Remise en route électrolyseur</div>
+        </div>
+        <div class="oc" id="op-sel" onclick="togO('sel',this)">
+          <div class="ot">Sel 25 kg</div>
+          <div class="op">17,50 €/sac</div>
+          <div class="od">Sel 25 kg &nbsp;<input type="number" id="f-sel-qty" min="1" max="20" value="1" onclick="event.stopPropagation()" oninput="calcSum()" style="width:36px;text-align:center;border:1px solid var(--bdr);border-radius:4px;padding:2px 4px;font-size:14px;background:#fff"> sac(s)</div>
+        </div>
+        <div class="oc" id="op-nettoyage" onclick="togO('nettoyage',this)">
+          <div class="ot">Nettoyage volets/bâches</div>
+          <div class="op">Sur devis</div>
+          <div class="od">Volets / bâches / abris</div>
+        </div>
       </div>
     </div>
   </div>
@@ -510,17 +541,48 @@ input[type="file"]{display:none}
   <div class="card" id="cp-hiv" style="display:none">
     <div class="ch"><div class="ct">❄️ Prestation — Hivernage</div></div>
     <div class="cb">
+      <!-- PRESTATIONS PRINCIPALES -->
+      <div style="font-size:11px;font-weight:700;color:#6D28D9;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Choisir une prestation principale *</div>
       <div class="ogrid">
-        <div class="oc hv" id="op-hiv-simple" onclick="selP('hiv-simple',this)"><div class="ot">Hivernage simple</div><div class="op">220 €</div><div class="od">1h · 1 technicien</div></div>
-        <div class="oc hv" id="op-hiv-complet" onclick="selP('hiv-complet',this)"><div class="ot">Hivernage complet</div><div class="op">340 €</div><div class="od">Nettoyage + hivern. · 2h · 2 tech</div></div>
-        <div class="oc hv disabled" id="op-hiv-actif" onclick="selP('hiv-actif',this)"><div class="ot">Hivernage actif</div><div class="op">+80 €</div><div class="od">Supplément hivern. simple/complet requis</div></div>
+        <div class="oc hv" id="op-hiv-simple" onclick="selP('hiv-simple',this)">
+          <div class="ot">Hivernage simple</div>
+          <div class="op">220 €</div>
+          <div class="od">1h · 1 technicien</div>
+        </div>
+        <div class="oc hv" id="op-hiv-complet" onclick="selP('hiv-complet',this)">
+          <div class="ot">Hivernage complet</div>
+          <div class="op">340 €</div>
+          <div class="od">Nettoyage + hivern. · 2h · 2 tech</div>
+        </div>
+      </div>
+      <!-- SUPPLÉMENT — visible seulement après sélection principale -->
+      <div id="hiv-actif-section" style="display:none;margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:#D97706;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Supplément (optionnel)</div>
+        <div class="oc hv" id="op-hiv-actif" onclick="selP('hiv-actif',this)" style="border-style:dashed">
+          <div class="ot">Hivernage actif <span style="font-size:10px;color:#D97706;font-weight:700">SUPPLÉMENT</span></div>
+          <div class="op">+80 €</div>
+          <div class="od">S'ajoute au hivernage simple ou complet</div>
+        </div>
       </div>
       <div class="divdr"></div>
-      <div style="font-weight:800;font-size:11.5px;margin-bottom:10px;color:var(--t2)">OPTIONS</div>
+      <!-- OPTIONS -->
+      <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Options (cocher si besoin)</div>
       <div class="ogrid">
-        <div class="oc hv" id="op-hiv-poche" onclick="togO('hiv-poche',this)"><div class="ot">Poche filtrante</div><div class="op">42,93 €</div><div class="od">Poche d'hivernage 500M</div></div>
-        <div class="oc hv" id="op-hiv-tac" onclick="togO('hiv-tac',this)"><div class="ot">JD TAC+</div><div class="op">28,82 €</div><div class="od">Protection antigel</div></div>
-        <div class="oc hv" id="op-hiv-couv" onclick="togO('hiv-couv',this)"><div class="ot">Pose couverture</div><div class="op">Sur devis</div><div class="od">Volet / bâche hivernale</div></div>
+        <div class="oc hv" id="op-hiv-poche" onclick="togO('hiv-poche',this)">
+          <div class="ot">Poche filtrante</div>
+          <div class="op">42,93 €</div>
+          <div class="od">Poche d'hivernage 500M</div>
+        </div>
+        <div class="oc hv" id="op-hiv-tac" onclick="togO('hiv-tac',this)">
+          <div class="ot">JD TAC+</div>
+          <div class="op">28,82 €</div>
+          <div class="od">Protection antigel</div>
+        </div>
+        <div class="oc hv" id="op-hiv-couv" onclick="togO('hiv-couv',this)">
+          <div class="ot">Pose couverture</div>
+          <div class="op">Sur devis</div>
+          <div class="od">Volet / bâche hivernale</div>
+        </div>
       </div>
     </div>
   </div>
@@ -645,6 +707,41 @@ input[type="file"]{display:none}
 <div class="view" id="view-techniciens">
   <div class="ptitle">Paramètres</div>
   <div class="psub">Année, semaines, techniciens</div>
+
+  <!-- SAISONS ACTIVES -->
+  <div class="card" style="border:2px solid #059669">
+    <div class="ch" style="background:#F0FDF4"><div class="ct" style="color:#065F46">✅ Saisons actives</div></div>
+    <div class="cb">
+      <div style="font-size:12px;color:var(--t2);margin-bottom:12px">Cochez uniquement les saisons dont les tarifs sont confirmés. Les saisons décochées sont grisées et inaccessibles.</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:12px;border-radius:9px;border:1.5px solid var(--bdr);background:var(--bg)">
+          <input type="checkbox" id="toggle-ouverture" onchange="toggleSaison('ouverture',this.checked)"
+            style="width:20px;height:20px;accent-color:#0057FF;cursor:pointer">
+          <div>
+            <div style="font-weight:700;font-size:14px">🌊 Ouvertures</div>
+            <div style="font-size:12px;color:var(--t2)">Niv.1 240€ · Niv.2 390€ · Active sous abri 195€</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:12px;border-radius:9px;border:1.5px solid var(--bdr);background:var(--bg)">
+          <input type="checkbox" id="toggle-entretien" onchange="toggleSaison('entretien',this.checked)"
+            style="width:20px;height:20px;accent-color:#059669;cursor:pointer">
+          <div>
+            <div style="font-weight:700;font-size:14px">🧴 Entretien</div>
+            <div style="font-size:12px;color:var(--t2)">Visite · Analyse eau · Commande −15%</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:12px;border-radius:9px;border:1.5px solid var(--bdr);background:var(--bg)">
+          <input type="checkbox" id="toggle-hivernage" onchange="toggleSaison('hivernage',this.checked)"
+            style="width:20px;height:20px;accent-color:#6D28D9;cursor:pointer">
+          <div>
+            <div style="font-weight:700;font-size:14px">❄️ Hivernages</div>
+            <div style="font-size:12px;color:var(--t2)">À activer dès réception des tarifs 2026</div>
+          </div>
+        </label>
+      </div>
+    </div>
+  </div>
+
   <div class="card" style="border:2px solid #3B82F6">
     <div class="ch" style="background:#EFF6FF"><div class="ct" style="color:#1D4ED8">&#128279; Lien formulaire client</div></div>
     <div class="cb">
@@ -763,7 +860,7 @@ input[type="file"]{display:none}
       <div class="mo-step"><div class="mo-num">1</div><div class="mo-txt"><strong>Régler l'année</strong> → ⚙️ Paramètres : boutons − / + pour l'année. Les semaines ISO se recalculent automatiquement.</div></div>
       <div class="mo-step"><div class="mo-num">2</div><div class="mo-txt"><strong>Configurer les zones directionnelles</strong> → ⚙️ Paramètres · Zones directionnelles. Chaque jour de la semaine est associé à un secteur géographique autour de Bourges. Vérifier que Lundi=Nord, Mardi=Est, Mercredi=Sud, Jeudi=Ouest, Vendredi=Local. Ajuster si besoin.</div></div>
       <div class="mo-step"><div class="mo-num">3</div><div class="mo-txt"><strong>Nommer les techniciens</strong> → ⚙️ Paramètres · Équipe. Tech 3 = doublure obligatoire sur Niv.2. Hors doublure, il travaille en autonome comme Tech 1 et 2.</div></div>
-      <div class="mo-step"><div class="mo-num">4</div><div class="mo-txt"><strong>Choisir la saison</strong> → 🌊 Ouvertures · 🧴 Entretien · ❄️ Hivernages en haut de l'écran.</div></div>
+      <div class="mo-step"><div class="mo-num">4</div><div class="mo-txt"><strong>Choisir la saison</strong> → 🌊 Ouvertures · 🧴 Entretien en haut.<br><span style="color:#D97706;font-size:12px">❄️ Hivernages — tarifs 2026 en cours de mise à jour.</span></div></div>
       <div class="mo-step"><div class="mo-num">5</div><div class="mo-txt"><strong>Saisir les clients</strong> → ✏️ Saisie. Remplir nom, adresse complète (CP + commune), prestation, semaine(s) souhaitée(s), jours disponibles. Un client existant se met à jour automatiquement sans doublon.</div></div>
       <div class="mo-step"><div class="mo-num">6</div><div class="mo-txt"><strong>Lancer ⚡ Auto</strong> → L'algo place chaque client sur son jour directionnel naturel (ex : client à Nevers → Mardi Est), puis distribue les techniciens par cluster géographique. Le Tech 3 est géré automatiquement : doublure sur Niv.2, tournée autonome avec les heures restantes. <em>Un seul clic fait tout.</em></div></div>
       <div class="mo-step"><div class="mo-num">7</div><div class="mo-txt"><strong>Vérifier le planning</strong> → 📅 Planning. Les alertes 🧭 signalent un client mal orienté. Les alertes 🚗 signalent un client isolé à +100 km. Utiliser 🔀 Déplacer pour corriger manuellement.</div></div>
@@ -1103,10 +1200,68 @@ let DB={
 
 // Auto-detect season based on current month
 function detectSaison(){
-  const m=new Date().getMonth()+1; // 1-12
-  if(m>=9&&m<=11)return'hivernage';
+  const m=new Date().getMonth()+1;
+  // ❄️ Hivernage désactivé — tarifs 2026 non disponibles
+  // if(m>=9&&m<=11)return'hivernage';
   if(m>=4&&m<=5)return'entretien';
   return'ouverture';
+}
+
+function saisonIndispo(){
+  toast('❄️ Tarifs hivernage 2026 en cours de mise à jour — à activer dans ⚙️ Paramètres','warn');
+}
+
+function toggleSaison(s, active){
+  if(!DB.saisonsActives) DB.saisonsActives={ouverture:true,entretien:true,hivernage:false};
+  DB.saisonsActives[s]=active;
+  markDirty();autosave();
+  applyTogglesSaisons();
+  toast(active ? `✅ ${s} activée` : `⏸ ${s} désactivée`, active?'ok':'warn');
+}
+
+function applyTogglesSaisons(){
+  if(!DB.saisonsActives) DB.saisonsActives={ouverture:true,entretien:true,hivernage:false};
+  const sa=DB.saisonsActives;
+  // Mettre à jour les checkboxes
+  ['ouverture','entretien','hivernage'].forEach(s=>{
+    const cb=document.getElementById('toggle-'+s);
+    if(cb) cb.checked=!!sa[s];
+  });
+  // Mettre à jour les boutons de saison dans le header
+  const btnOuv=document.querySelector('.stab.ouverture');
+  const btnEnt=document.querySelector('.stab.entretien');
+  const btnHiv=document.querySelector('.stab.hivernage');
+  if(btnOuv){
+    btnOuv.style.opacity=sa.ouverture?'1':'0.35';
+    btnOuv.onclick=sa.ouverture?function(){setSaison('ouverture',this);}:function(){saisonIndispo('ouverture');};
+  }
+  if(btnEnt){
+    btnEnt.style.opacity=sa.entretien?'1':'0.35';
+    btnEnt.onclick=sa.entretien?function(){setSaison('entretien',this);}:function(){saisonIndispo('entretien');};
+  }
+  if(btnHiv){
+    btnHiv.style.opacity=sa.hivernage?'1':'0.35';
+    btnHiv.onclick=sa.hivernage?function(){setSaison('hivernage',this);}:function(){saisonIndispo('hivernage');};
+    btnHiv.title=sa.hivernage?'Hivernages':'Hivernages — tarifs en cours de mise à jour';
+  }
+  // Si la saison active est désactivée → basculer sur ouverture
+  if(saison==='hivernage'&&!sa.hivernage){
+    const tab=document.querySelector('.stab.ouverture');
+    if(tab) setSaison('ouverture',tab);
+  }
+  if(saison==='entretien'&&!sa.entretien){
+    const tab=document.querySelector('.stab.ouverture');
+    if(tab) setSaison('ouverture',tab);
+  }
+}
+
+function saisonIndispo(s){
+  const msgs={
+    hivernage:'❄️ Hivernages — tarifs 2026 en cours de mise à jour. Activez dans ⚙️ Paramètres.',
+    entretien:'🧴 Entretien — non disponible actuellement.',
+    ouverture:'🌊 Ouvertures — non disponible actuellement.',
+  };
+  toast(msgs[s]||'Saison non disponible','warn');
 }
 
 let saison=detectSaison();
@@ -1225,6 +1380,9 @@ function setSaison(s,btn){
   // Re-enable addon cards
   const addons=isH?['op-hiv-actif']:['op-active'];
   addons.forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('disabled');});
+  // Cacher les sections suppléments au changement de saison
+  const hs=document.getElementById('hiv-actif-section');if(hs)hs.style.display='none';
+  const os=document.getElementById('ouv-active-section');if(os)os.style.display='none';
   document.getElementById('ahint').style.display='none';
   calcSum();renderWkSel();renderLegend();
   // Set first week of this season
@@ -1325,12 +1483,19 @@ function selP(type,el){
     :['op-simple','op-complete','op-active'];
   grps.forEach(id=>{const e=document.getElementById(id);if(e)e.classList.remove('sel');});
   fP=type;el.classList.add('sel');
-  // Unlock addon after choosing main prestation
-  if(!type.includes('actif')&&!isE&&!type.includes('analyse')&&!type.includes('commande')){
-    const addon=isH?'op-hiv-actif':'op-active';
-    const ae=document.getElementById(addon);
-    if(ae)ae.classList.remove('disabled');
-  }
+
+  // Afficher la section supplément SEULEMENT après sélection d'une prestation principale
+  const isMainH=isH&&!type.includes('actif');
+  const isMainO=!isH&&!isE&&!type.includes('active');
+  // Hivernage : afficher supplément actif
+  const hivSection=document.getElementById('hiv-actif-section');
+  if(hivSection) hivSection.style.display=isMainH?'block':'none';
+  // Ouverture : afficher supplément active sous abri
+  const ouvSection=document.getElementById('ouv-active-section');
+  if(ouvSection) ouvSection.style.display=isMainO?'block':'none';
+
+  // Si on clique sur un supplément, ne pas re-cacher la section
+  // (le supplément est déjà visible à ce stade)
   showHint();calcSum();markDirty();
 }
 
@@ -1472,6 +1637,9 @@ function resetForm(){
   document.querySelectorAll('.wb').forEach(b=>b.classList.remove('sel','hv','et'));
   document.querySelectorAll('.jour-check').forEach(c=>{c.checked=false;});
   ['op-active','op-hiv-actif'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('disabled');});
+  // Cacher les sections suppléments
+  const hs=document.getElementById('hiv-actif-section');if(hs)hs.style.display='none';
+  const os=document.getElementById('ouv-active-section');if(os)os.style.display='none';
   document.getElementById('ahint').style.display='none';
   calcSum();renderWkSel();renderJoursGrid();
 }
@@ -3754,6 +3922,7 @@ function renderTechs(){
   });
   updateWkRangeLabels();
   renderZonesConfig();
+  applyTogglesSaisons();
 }
 
 /* ════ CONFIGURATION ZONES DIRECTIONNELLES ════ */
@@ -3920,7 +4089,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   loadFromLS();
   if(!DB.annee)DB.annee=new Date().getFullYear();
   if(!DB.cfg)DB.cfg={};
-  if(!DB.zones||!DB.zones.length)getZones(); // initialise zones par défaut
+  if(!DB.zones||!DB.zones.length)getZones();
+  if(!DB.saisonsActives)DB.saisonsActives={ouverture:true,entretien:true,hivernage:false};
   rebuildWKS();
 
   // Auto-detect & set season
@@ -3936,6 +4106,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   planWk=wks[0]?.num||14;
 
   updateBadges();renderDash();renderWkSel();renderLegend();renderJoursGrid();
+  // Appliquer l'état des saisons actives (après le DOM)
+  setTimeout(applyTogglesSaisons, 50);
 
   // Autosave every 10s
   setInterval(autosave,10000);
