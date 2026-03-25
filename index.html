@@ -273,8 +273,8 @@ th{text-align:left;padding:9px 11px;font-size:10px;font-weight:700;letter-spacin
 td{padding:9px 11px;border-bottom:1px solid var(--bdr);font-size:13px;vertical-align:middle}
 tr:last-child td{border-bottom:none}
 /* Modals */
-.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:flex-end;justify-content:center}
-.ov.open{display:flex}
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:flex-end;justify-content:center;padding:0}
+.ov.open{display:flex!important}
 .modal{background:#fff;border-radius:22px 22px 0 0;width:100%;max-height:92svh;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom,16px)}
 .mh{padding:18px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
 .mt{font-weight:700;font-size:16px}
@@ -315,7 +315,8 @@ input[type="file"]{display:none}
   .ogrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
   .wsel{grid-template-columns:repeat(5,1fr)}
   .modal{border-radius:var(--r);max-height:90vh}
-  .ov{align-items:center;padding:20px}
+  .ov{align-items:center;justify-content:center;padding:20px}
+  .ov.open{display:flex!important}
   .zitem{display:flex;align-items:flex-start;gap:12px}
   .zmaps{width:auto;display:inline-block;margin-top:0}
   .tc{bottom:20px;left:auto;right:20px;max-width:320px}
@@ -1781,7 +1782,7 @@ function showCM(id){
     }
   }
 
-  document.getElementById('m-client').classList.add('open');
+  const _mc=document.getElementById('m-client');_mc.classList.add('open');_mc.style.display='flex';
 }
 function delC(id){
   if(!confirm('Supprimer ce client ?'))return;
@@ -1879,7 +1880,7 @@ function renderPlanning(){
           <div class="rn">${c.nom} ${c.prenom.charAt(0)}.</div>
           <div class="rt">${pi.lbl||''}${dblTech2?` <span style="color:${dblTech2.color};font-size:9px;font-weight:700">+${dblTech2.nom.split(' ')[0]}</span>`:''}</div>
           <div class="rc">${c.ville} · ${c.cp.substring(0,2)} · ${pi.h||1}h · <span style="color:var(--B);font-weight:700">${arrH}</span>${(()=>{const idealDay=idealDayForCp(c.cp||'18000');const z=getZones().find(x=>x.day===idealDay);const wrong=idealDay!==di;return wrong&&z?` <span style="color:${z.color};font-size:9px;font-weight:700" title="Zone idéale: ${ZONE_DAY_NAMES[idealDay]}">⚠${ZONE_DAY_NAMES[idealDay].substring(0,3)}</span>`:'';})()} </div>
-          <button onclick="event.stopPropagation();openMove(${JSON.stringify(c.id)})" style="margin-top:3px;background:rgba(0,87,255,.1);border:none;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;color:var(--B);cursor:pointer;width:100%">🔀 Déplacer</button>
+          <button onclick="event.stopPropagation();openMove(${JSON.stringify(c.id)})" style="margin-top:4px;background:rgba(0,87,255,.12);border:1px solid rgba(0,87,255,.25);border-radius:5px;padding:4px 8px;font-size:11px;font-weight:700;color:var(--B);cursor:pointer;width:100%;min-height:28px">🔀 Déplacer</button>
         </div>`;
       });
       html+='</div>';
@@ -2122,7 +2123,7 @@ function openSlot(wk,day,techId){
         return`<option value="${c.id}">${c.nom} ${c.prenom} — ${pi.lbl||c.presta} · ${c.ville} (${c.cp})${ww}</option>`;
       }).join('')
     :'<option>— Aucun client non planifié —</option>';
-  document.getElementById('m-slot').classList.add('open');
+  const _ms=document.getElementById('m-slot');_ms.classList.add('open');_ms.style.display='flex';
 }
 function doAssign(){
   const cid=parseFloat(document.getElementById('slot-sel').value);
@@ -2184,7 +2185,7 @@ function openMove(id){
   const daySel=document.getElementById('move-day');
   if(daySel) daySel.value=c.jour||0;
   updateMoveTechOptions();
-  document.getElementById('m-move').classList.add('open');
+  const _mm=document.getElementById('m-move');_mm.classList.add('open');_mm.style.display='flex';
 }
 
 function updateMoveTechOptions(){
@@ -4075,7 +4076,10 @@ function clearAll(){
 }
 
 /* ════ UTILS ════ */
-function closeM(id){document.getElementById(id).classList.remove('open');}
+function closeM(id){
+  const el=document.getElementById(id);
+  if(el){el.classList.remove('open');el.style.display='none';}
+}
 function toast(msg,type){
   const t=document.createElement('div');
   t.className='toast '+(type||'');t.textContent=msg;
