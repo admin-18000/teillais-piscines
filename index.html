@@ -1854,7 +1854,7 @@ function renderPlanning(){
       const pct=Math.min(100,hu/MAX_H*100);
       const ccls=hu>=MAX_H?'cap-f':hu>=MAX_H*.7?'cap-w':'cap-ok';
       const barCol=hu>=MAX_H?'var(--R)':isH?'#7C3AED':isE?'#059669':'var(--B)';
-      html+=`<div class="pslot ${hcls}" onclick="openSlot(${w},${di},${tech.id})">
+      html+=`<div class="pslot ${hcls}" data-wk="${w}" data-day="${di}" data-tech="${tech.id}" onclick="openSlot(${w},${di},${tech.id})">
         <div class="pcap ${ccls}">${hu}h / ${MAX_H}h</div>
         <div style="height:3px;background:var(--bg);border-radius:2px;margin:0 2px 4px;overflow:hidden">
           <div style="height:3px;background:${barCol};width:${pct}%;border-radius:2px"></div>
@@ -1875,7 +1875,7 @@ function renderPlanning(){
         slotMin+=Math.round(arrD*1.4);
         const arrH=Math.floor(slotMin/60).toString().padStart(2,'0')+':'+((slotMin%60).toString().padStart(2,'0'));
         const dblTech2=c.doublureId?DB.techs.find(t=>t.id===c.doublureId):null;
-        html+=`<div class="rcard ${pi.css||'simple'}" onclick="event.stopPropagation();showCM(${JSON.stringify(c.id)})">
+        html+=`<div class="rcard ${pi.css||'simple'}" data-cid="${c.id}" style="cursor:pointer">
           <span class="rx" onclick="event.stopPropagation();unplan(${JSON.stringify(c.id)})">×</span>
           <div class="rn">${c.nom} ${c.prenom.charAt(0)}.</div>
           <div class="rt">${pi.lbl||''}${dblTech2?` <span style="color:${dblTech2.color};font-size:9px;font-weight:700">+${dblTech2.nom.split(' ')[0]}</span>`:''}</div>
@@ -1912,6 +1912,23 @@ function renderPlanning(){
     html+='</div>';
   }
   document.getElementById('pgrid').innerHTML=html;
+  // Délégation de clic sur les rcards — robuste, indépendant du CSS
+  const pgrid=document.getElementById('pgrid');
+  pgrid.onclick=function(e){
+    // Ignorer clics sur × et bouton Déplacer (ont leur propre handler)
+    if(e.target.classList.contains('rx'))return;
+    if(e.target.tagName==='BUTTON')return;
+    // Remonter jusqu'à la rcard
+    const rcard=e.target.closest('.rcard');
+    if(rcard&&rcard.dataset.cid){
+      showCM(parseInt(rcard.dataset.cid));
+    }
+    // Clic sur slot vide → ouvrir modal affectation
+    const pslot=e.target.closest('.pslot');
+    if(pslot&&!rcard&&pslot.dataset.wk&&pslot.dataset.day&&pslot.dataset.tech){
+      openSlot(parseInt(pslot.dataset.wk),parseInt(pslot.dataset.day),parseInt(pslot.dataset.tech));
+    }
+  };
   renderUnplaced();
   renderPlanningMobile();
 }
