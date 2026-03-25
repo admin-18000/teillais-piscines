@@ -600,6 +600,7 @@ input[type="file"]{display:none}
     <button class="btn bauto sm" onclick="autoWeek()">⚡ Auto sem.</button>
     <button class="btn bs sm" onclick="sortGeo()">📍 Trier zone</button>
     <button class="btn bs sm" onclick="reoptimize()" title="Relancer l'algo sur les clients déjà planifiés cette semaine" style="border-color:#8B5CF6;color:#8B5CF6">🔄 Réoptimiser</button>
+    <button class="btn bs sm" onclick="reClusterSemaine(planWk)" title="Re-distribuer les techniciens par cluster géographique" style="border-color:#0057FF;color:#0057FF">🧭 Clusters sem.</button>
     <button class="btn bs sm" onclick="unplanWeek()" title="Déplanifier tous les clients de cette semaine" style="border-color:#DC2626;color:#DC2626">🗑 Vider sem.</button>
     <select id="pl-tech-filter" onchange="renderPlanning()" style="border:1.5px solid var(--bdr);border-radius:8px;padding:5px 8px;font-size:12px;background:var(--bg);color:var(--fg);cursor:pointer">
       <option value="">Tous les techs</option>
@@ -722,7 +723,7 @@ input[type="file"]{display:none}
 <!-- MODE OPÉRATOIRE -->
 <div class="view" id="view-aide">
   <div class="ptitle">❓ Mode opératoire</div>
-  <div class="psub">Guide complet d'utilisation · Teillais Piscines Desjoyaux</div>
+  <div class="psub">Guide complet · Teillais Piscines Desjoyaux · 2026</div>
 
   <!-- RACCOURCIS CLAVIER -->
   <div class="card">
@@ -750,37 +751,126 @@ input[type="file"]{display:none}
         <span class="info-pill">💾 Sauvegarde auto</span>
         <span class="info-pill">📅 Année modifiable</span>
         <span class="info-pill">⚡ Auto-planification</span>
+        <span class="info-pill">🧭 Tournées intelligentes</span>
         <span class="info-pill g">3 saisons</span>
         <span class="info-pill o">Export / Import JSON</span>
-        <span class="info-pill">⌨️ Raccourcis clavier</span>
-        <span class="info-pill">🔍 Recherche client</span>
+        <span class="info-pill">🔀 Déplacer un RDV</span>
         <span class="info-pill">🔄 Réoptimisation</span>
         <span class="info-pill">📄 Rapport de clôture</span>
         <span class="info-pill">🚗 Feuilles de route</span>
         <span class="info-pill">💰 Finances &amp; Export</span>
       </div>
-      <div class="mo-step"><div class="mo-num">1</div><div class="mo-txt"><strong>Régler l'année</strong> → Onglet ⚙️ Paramètres : boutons − / + pour choisir l'année.</div></div>
-      <div class="mo-step"><div class="mo-num">2</div><div class="mo-txt"><strong>Nommer les techniciens</strong> → Onglet ⚙️ Paramètres. Tech 3 = doublure Niv.2 uniquement, peut faire Niv.1 les autres jours.</div></div>
-      <div class="mo-step"><div class="mo-num">3</div><div class="mo-txt"><strong>Choisir la saison</strong> → 🌊 Ouvertures · 🧴 Entretien · ❄️ Hivernages en haut.</div></div>
-      <div class="mo-step"><div class="mo-num">4</div><div class="mo-txt"><strong>Saisir les clients</strong> → ✏️ Saisie. Recherchez un client existant avec la barre de recherche. Remplir nom, adresse, prestation, semaine(s) souhaitée(s), jours disponibles.</div></div>
-      <div class="mo-step"><div class="mo-num">5</div><div class="mo-txt"><strong>Planifier</strong> → Via 📅 Planning (cliquer un créneau) ou bouton ⚡ Auto-planif. Utilisez 🔄 Réoptimiser pour relancer l'algo sur une semaine déjà planifiée.</div></div>
-      <div class="mo-step"><div class="mo-num">6</div><div class="mo-txt"><strong>Feuilles de route</strong> → 🚗 Feuilles de route : ordre de passage optimisé, heures estimées, bouton Maps par client, imprimable.</div></div>
-      <div class="mo-step"><div class="mo-num">7</div><div class="mo-txt"><strong>SMS confirmation</strong> → Dans la fiche client planifié : bouton 💬 SMS pré-rédigé avec jour, heure et montant.</div></div>
-      <div class="mo-step"><div class="mo-num">8</div><div class="mo-txt"><strong>Finances &amp; Export</strong> → 💰 CA par prestation et technicien, détection doublons, export JSON (sauvegarde), CSV clients, rapport de clôture HTML.</div></div>
-      <div class="mo-step"><div class="mo-num">9</div><div class="mo-txt"><strong>Historique</strong> → Dans Finances, chargez une saison précédente pour la consulter ou la réutiliser.</div></div>
+      <div class="mo-step"><div class="mo-num">1</div><div class="mo-txt"><strong>Régler l'année</strong> → ⚙️ Paramètres : boutons − / + pour l'année. Les semaines ISO se recalculent automatiquement.</div></div>
+      <div class="mo-step"><div class="mo-num">2</div><div class="mo-txt"><strong>Configurer les zones directionnelles</strong> → ⚙️ Paramètres · Zones directionnelles. Chaque jour de la semaine est associé à un secteur géographique autour de Bourges. Vérifier que Lundi=Nord, Mardi=Est, Mercredi=Sud, Jeudi=Ouest, Vendredi=Local. Ajuster si besoin.</div></div>
+      <div class="mo-step"><div class="mo-num">3</div><div class="mo-txt"><strong>Nommer les techniciens</strong> → ⚙️ Paramètres · Équipe. Tech 3 = doublure obligatoire sur Niv.2. Hors doublure, il travaille en autonome comme Tech 1 et 2.</div></div>
+      <div class="mo-step"><div class="mo-num">4</div><div class="mo-txt"><strong>Choisir la saison</strong> → 🌊 Ouvertures · 🧴 Entretien · ❄️ Hivernages en haut de l'écran.</div></div>
+      <div class="mo-step"><div class="mo-num">5</div><div class="mo-txt"><strong>Saisir les clients</strong> → ✏️ Saisie. Remplir nom, adresse complète (CP + commune), prestation, semaine(s) souhaitée(s), jours disponibles. Un client existant se met à jour automatiquement sans doublon.</div></div>
+      <div class="mo-step"><div class="mo-num">6</div><div class="mo-txt"><strong>Lancer ⚡ Auto</strong> → L'algo place chaque client sur son jour directionnel naturel (ex : client à Nevers → Mardi Est), puis distribue les techniciens par cluster géographique. Le Tech 3 est géré automatiquement : doublure sur Niv.2, tournée autonome avec les heures restantes. <em>Un seul clic fait tout.</em></div></div>
+      <div class="mo-step"><div class="mo-num">7</div><div class="mo-txt"><strong>Vérifier le planning</strong> → 📅 Planning. Les alertes 🧭 signalent un client mal orienté. Les alertes 🚗 signalent un client isolé à +100 km. Utiliser 🔀 Déplacer pour corriger manuellement.</div></div>
+      <div class="mo-step"><div class="mo-num">8</div><div class="mo-txt"><strong>Feuilles de route</strong> → 🚗 Feuilles de route. Ordre de passage optimisé par technicien, heures d'arrivée estimées, bouton Maps, imprimable.</div></div>
+      <div class="mo-step"><div class="mo-num">9</div><div class="mo-txt"><strong>SMS confirmation</strong> → Dans la fiche client (👁 ou clic sur une carte) : bouton 💬 SMS pré-rédigé avec jour, heure et montant.</div></div>
+      <div class="mo-step"><div class="mo-num">10</div><div class="mo-txt"><strong>Finances &amp; Export</strong> → 💰 CA par prestation et technicien, détection doublons, export JSON (sauvegarde/transfert), CSV clients, rapport de clôture HTML imprimable.</div></div>
     </div>
   </div>
 
-  <!-- NOUVELLES FONCTIONNALITÉS -->
+  <!-- INTELLIGENCE DES TOURNÉES -->
   <div class="card" style="border:2px solid #0057FF">
-    <div class="ch" style="background:#EFF6FF"><div class="ct" style="color:#1D4ED8">✨ Nouvelles fonctionnalités 2026</div></div>
+    <div class="ch" style="background:#EFF6FF"><div class="ct" style="color:#1D4ED8">🧭 Intelligence des tournées — comment ça marche</div></div>
     <div class="cb">
-      <div class="mo-step"><div class="mo-num" style="background:#0057FF">→</div><div class="mo-txt"><strong>Formulaire client intelligent</strong> · Ville auto depuis CP · Tarif estimé en temps réel · Remise -15% cochable · Multi-semaines · Jours/demi-journées disponibles · À votre convenance</div></div>
-      <div class="mo-step"><div class="mo-num" style="background:#059669">→</div><div class="mo-txt"><strong>Feuilles de route optimisées</strong> · Algorithme du plus proche voisin depuis Bourges · Heure d'arrivée estimée · Temps et distance par client · Bouton Maps · Imprimable</div></div>
-      <div class="mo-step"><div class="mo-num" style="background:#7C3AED">→</div><div class="mo-txt"><strong>Planning enrichi</strong> · Heure estimée sur chaque carte · Résumé journalier (clients, h, km) · Filtre par technicien · Réoptimiser une semaine · Vider une semaine · Taux de remplissage par semaine (code couleur)</div></div>
-      <div class="mo-step"><div class="mo-num" style="background:#D97706">→</div><div class="mo-txt"><strong>Alertes intelligentes</strong> · Avertissement 80% capacité · Alerte géo si client éloigné · Suggestions de regroupement géo dans le tableau de bord · Détection automatique des doublons</div></div>
-      <div class="mo-step"><div class="mo-num" style="background:#DC2626">→</div><div class="mo-txt"><strong>Gestion clients avancée</strong> · Recherche autocomplete · Mise à jour fiche (anti-doublon) · Badge "MIS À JOUR" · Filtre "Modifiés" · Notes technicien séparées · SMS confirmation pré-rédigé</div></div>
-      <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Données &amp; Export</strong> · Sauvegarde JSON par année/saison · Import JSON entre appareils · Export CSV · Rapport de clôture HTML · Historique des saisons précédentes · CA par prestation et technicien</div></div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:14px;line-height:1.6">
+        L'algo travaille en <strong>3 niveaux successifs</strong> pour construire des tournées compactes et cohérentes.
+      </div>
+
+      <div class="mo-step">
+        <div class="mo-num" style="background:#0057FF">1</div>
+        <div class="mo-txt">
+          <strong>Niveau 1 — Jour directionnel</strong><br>
+          Chaque client reçoit un angle et une distance depuis Bourges (coordonnées GPS précises par commune). Il est placé sur le jour dont le secteur correspond à sa direction.<br>
+          <span style="font-size:11px;color:var(--t3)">Ex : Nevers (58) → angle 97° Est → Mardi. Châteauroux (36) → angle 236° Ouest → Jeudi. Banlieue Bourges → Local → Vendredi.</span><br>
+          <span style="background:#FFF7ED;border:1px solid #F59E0B;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;color:#92400E;margin-top:4px;display:inline-block">⚠️ Si un client demande un jour précis, sa contrainte prime sur la zone.</span>
+        </div>
+      </div>
+
+      <div class="mo-step">
+        <div class="mo-num" style="background:#7C3AED">2</div>
+        <div class="mo-txt">
+          <strong>Niveau 2 — Clustering par technicien</strong><br>
+          Au sein d'un même jour, les clients sont regroupés en clusters géographiques (k-means sur coords GPS). Chaque cluster est assigné au technicien dont l'ancrage géo est le plus cohérent.<br>
+          <span style="font-size:11px;color:var(--t3)">Ex : Mardi Est avec 6 clients → Tech1 prend le cluster Nevers/Cosne (Nord-Est), Tech2 prend le cluster Moulins/Montluçon (Sud-Est). Ils ne se croisent pas.</span>
+        </div>
+      </div>
+
+      <div class="mo-step">
+        <div class="mo-num" style="background:#059669">3</div>
+        <div class="mo-txt">
+          <strong>Niveau 3 — Tech 3 intégré intelligemment</strong><br>
+          • Sur un Niv.2 : Tech 3 = doublure obligatoire (même camion, même adresses que le tech principal).<br>
+          • Heures restantes après doublures → Tech 3 reçoit son propre cluster géo parmi les Niv.1 du jour.<br>
+          • Jour sans Niv.2 → Tech 3 traité exactement comme Tech 1 et 2 : cluster autonome, tournée indépendante.
+        </div>
+      </div>
+
+      <div class="mo-step">
+        <div class="mo-num" style="background:#D97706">4</div>
+        <div class="mo-txt">
+          <strong>Niveau 4 — Ordre de visite (feuille de route)</strong><br>
+          Pour chaque technicien, l'ordre de passage est optimisé par l'algorithme du <em>plus proche voisin</em> depuis Bourges. Résultat : ~40% de km en moins vs un ordre aléatoire.
+        </div>
+      </div>
+
+      <div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:9px;padding:12px 14px;margin-top:8px;font-size:13px;color:#065F46">
+        <strong>En pratique :</strong> un seul clic ⚡ Auto fait les 4 niveaux. Si Melvin déplace manuellement un client, il peut cliquer <strong>🧭 Clusters sem.</strong> pour recalculer uniquement la distribution des techs sans changer les jours.
+      </div>
+    </div>
+  </div>
+
+  <!-- BOUTONS DU PLANNING -->
+  <div class="card">
+    <div class="ch"><div class="ct">📅 Boutons du planning — à quoi servent-ils</div></div>
+    <div class="cb" style="display:flex;flex-direction:column;gap:10px;font-size:13px">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="background:linear-gradient(135deg,var(--B),#00C2FF);color:#fff;border-radius:6px;padding:3px 10px;font-weight:700;font-size:12px;flex-shrink:0">⚡ Auto sem.</span>
+        <span>Place tous les clients non planifiés de cette semaine en appliquant les 4 niveaux d'intelligence (zones + clusters + Tech3 + ordre).</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="background:#EDE9FE;color:#5B21B6;border:1px solid #C4B5FD;border-radius:6px;padding:3px 10px;font-weight:700;font-size:12px;flex-shrink:0">🔄 Réoptimiser</span>
+        <span>Déplanifie tous les clients de la semaine et relance l'algo complet (jours + clusters). Utile si beaucoup de nouveaux clients ont été ajoutés.</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="background:#EFF6FF;color:#0057FF;border:1px solid #BFDBFE;border-radius:6px;padding:3px 10px;font-weight:700;font-size:12px;flex-shrink:0">🧭 Clusters sem.</span>
+        <span>Recalcule uniquement la distribution Tech1/Tech2/Tech3 par cluster géo, <strong>sans changer les jours</strong>. À utiliser après un déplacement manuel d'un RDV.</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:6px;padding:3px 10px;font-weight:700;font-size:12px;flex-shrink:0">🗑 Vider sem.</span>
+        <span>Déplanifie tous les clients de la semaine (ils restent enregistrés, juste retirés du planning).</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="background:var(--bg);color:var(--t);border:1px solid var(--bdr);border-radius:6px;padding:3px 10px;font-weight:700;font-size:12px;flex-shrink:0">🔀 Déplacer</span>
+        <span>Sur chaque carte RDV : ouvre un sélecteur semaine / jour / technicien pour déplacer manuellement un client sans passer par l'algo.</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="background:var(--bg);color:var(--t);border:1px solid var(--bdr);border-radius:6px;padding:3px 10px;font-weight:700;font-size:12px;flex-shrink:0">📍 Trier zone</span>
+        <span>Déplanifie et replace les clients de la semaine triés par code postal. Alternative manuelle au clustering automatique.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERTES -->
+  <div class="card">
+    <div class="ch"><div class="ct">⚠️ Alertes du planning — que faire</div></div>
+    <div class="cb" style="display:flex;flex-direction:column;gap:10px;font-size:13px">
+      <div style="background:#FEF2F2;border:1.5px solid #FCA5A5;border-radius:8px;padding:10px 12px">
+        <strong style="color:#DC2626">📍 Journée dispersée (rouge)</strong> — Deux clients du même jour sont à plus de 80 km l'un de l'autre. Utiliser 🔀 Déplacer pour les répartir sur des jours différents.
+      </div>
+      <div style="background:#FFF7ED;border:1.5px solid #F59E0B;border-radius:8px;padding:10px 12px">
+        <strong style="color:#D97706">🧭 Direction incohérente (orange)</strong> — Un client est placé sur un jour dont la zone ne correspond pas à sa direction géographique. L'algo l'a accepté par contrainte de capacité ou de semaine. Vérifier si un déplacement est possible.
+      </div>
+      <div style="background:#FFF7ED;border:1.5px solid #F59E0B;border-radius:8px;padding:10px 12px">
+        <strong style="color:#D97706">🚗 Client isolé +100 km (orange)</strong> — Un client éloigné est seul ce jour sans voisin géographique. La tournée A/R sera longue. Chercher un autre client dans la même zone pour rentabiliser le déplacement.
+      </div>
+      <div style="background:#FFF7ED;border:1.5px solid #F59E0B;border-radius:8px;padding:10px 12px">
+        <strong style="color:#D97706">⚠️ Semaine décalée (orange)</strong> — Un client a été placé sur une semaine différente de celle qu'il avait demandée (semaine pleine). Vérifier si un rappel client est nécessaire.
+      </div>
     </div>
   </div>
 
@@ -790,34 +880,37 @@ input[type="file"]{display:none}
       <div class="ch"><div class="ct" style="color:var(--B)">🌊 Saison Ouvertures</div></div>
       <div class="cb">
         <div class="mo-step"><div class="mo-num" style="background:var(--B)">→</div><div class="mo-txt"><strong>Niv.1 Simple</strong> · 240 € · 1h · 1 tech · Bleu sur planning</div></div>
-        <div class="mo-step"><div class="mo-num" style="background:var(--B)">→</div><div class="mo-txt"><strong>Niv.2 Complète</strong> · 390 € · 2h · Tech principal + Tech 3 doublure · Jaune sur planning · 1 camion</div></div>
-        <div class="mo-step"><div class="mo-num" style="background:var(--O)">→</div><div class="mo-txt"><strong>Active sous abri</strong> · +195 € · Vert sur planning</div></div>
-        <div class="mo-step"><div class="mo-num" style="background:var(--t3)">→</div><div class="mo-txt">Électrolyseur/3en1 +40 € · Sel +17,50 €/sac · Nettoyage volets/bâches sur devis · −15% acheteur Desjoyaux N-1</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:var(--B)">→</div><div class="mo-txt"><strong>Niv.2 Complète</strong> · 390 € · 2h · Tech principal + Tech 3 doublure (même camion) · Jaune sur planning</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:var(--O)">→</div><div class="mo-txt"><strong>Active sous abri</strong> · +195 € · Nécessite Niv.1 ou Niv.2 sélectionné en premier · Vert sur planning</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:var(--t3)">→</div><div class="mo-txt">Électrolyseur/3en1 +40 € · Sel +17,50 €/sac · Nettoyage volets/bâches sur devis · −15% acheteur Desjoyaux année N-1</div></div>
       </div>
     </div>
     <div class="card">
       <div class="ch"><div class="ct" style="color:#6D28D9">❄️ Saison Hivernages</div></div>
       <div class="cb">
         <div class="mo-step"><div class="mo-num" style="background:#6D28D9">→</div><div class="mo-txt"><strong>Hivernage simple</strong> · 220 € · 1h · 1 tech</div></div>
-        <div class="mo-step"><div class="mo-num" style="background:#6D28D9">→</div><div class="mo-txt"><strong>Hivernage complet</strong> · 340 € · 2h · 2 tech</div></div>
-        <div class="mo-step"><div class="mo-num" style="background:var(--O)">→</div><div class="mo-txt"><strong>Actif</strong> +80 € · Poche 42,93 € · TAC+ 28,82 €</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:#6D28D9">→</div><div class="mo-txt"><strong>Hivernage complet</strong> · 340 € · 2h · Tech principal + Tech 3 doublure</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:var(--O)">→</div><div class="mo-txt"><strong>Actif</strong> +80 € · Poche filtrante 42,93 € · JD TAC+ 28,82 €</div></div>
       </div>
     </div>
     <div class="card">
       <div class="ch"><div class="ct" style="color:#059669">🧴 Entretien −15%</div></div>
       <div class="cb">
         <div class="mo-step"><div class="mo-num" style="background:#059669">→</div><div class="mo-txt"><strong>Visite entretien</strong> · sur devis · 1h</div></div>
-        <div class="mo-step"><div class="mo-num" style="background:#059669">→</div><div class="mo-txt"><strong>Analyse eau</strong> gratuite sur flyer</div></div>
-        <div class="mo-step"><div class="mo-num" style="background:#059669">→</div><div class="mo-txt"><strong>Commande produits −15%</strong></div></div>
+        <div class="mo-step"><div class="mo-num" style="background:#059669">→</div><div class="mo-txt"><strong>Analyse eau</strong> gratuite sur présentation flyer en magasin</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:#059669">→</div><div class="mo-txt"><strong>Commande produits −15%</strong> · Offre valable jusqu'au 16 mai</div></div>
       </div>
     </div>
     <div class="card">
       <div class="ch"><div class="ct">🔧 Règles métier</div></div>
       <div class="cb">
-        <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Tech 3 (doublure)</strong> · Obligatoire sur toutes les Niv.2 · Peut faire Niv.1 les jours sans Niv.2 · 1 camion pour Tech principal + Tech 3</div></div>
-        <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Capacité</strong> · 7h/technicien/jour · Départ et retour Bourges (18) · 1h pause incluse</div></div>
-        <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Algo priorité</strong> · Contraintes jour/heure → Regroupement Niv.2 → Zone géo → Charge journée</div></div>
-        <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Données</strong> · Sauvegarde locale (localStorage) · Export JSON pour transférer vers un autre appareil · Pas de synchronisation automatique multi-appareils</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Tech 3 — 3 situations</strong><br>
+          1. Niv.2 ce jour → doublure obligatoire (même camion, même adresses) — heures consommées<br>
+          2. Heures restantes après doublures → cluster Niv.1 autonome dans sa zone géo<br>
+          3. Aucun Niv.2 ce jour → technicien totalement libre, traité comme Tech 1 et 2</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Capacité</strong> · 7h/technicien/jour · Départ et retour Bourges (18000) · Pause incluse</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Zones directionnelles</strong> · Configurables dans ⚙️ Paramètres · 5 secteurs angulaires depuis Bourges · Zone locale &lt;35km = Vendredi par défaut · Coordonnées GPS précises par commune (pas par département)</div></div>
+        <div class="mo-step"><div class="mo-num" style="background:#0F172A">→</div><div class="mo-txt"><strong>Données</strong> · Sauvegarde locale automatique (localStorage) · Export JSON pour transférer entre appareils · Import JSON depuis Finances</div></div>
       </div>
     </div>
   </div>
@@ -2583,17 +2676,15 @@ document.addEventListener('click',function(e){
 function reoptimize(){
   const wk=planWk;
   const cls=clSaison().filter(c=>c.planifie&&c.wkPl===wk);
-  if(!cls.length){toast('Aucun client planifie cette semaine','err');return;}
+  if(!cls.length){toast('Aucun client planifié cette semaine','err');return;}
   if(!confirm('Relancer l\'optimisation sur les '+cls.length+' clients de S'+wk+' ? Leurs créneaux seront recalculés.')){return;}
-  // Unplan all clients in this week
   cls.forEach(c=>{c.planifie=false;c.techId=null;c.jour=null;c.wkPl=null;c.doublureId=null;});
-  // Re-run auto assign for this week only
   const wks=getWks().filter(w=>w.num===wk);
   const sorted=cls.sort((a,b)=>{
     const contraA=(a.joursOk&&a.joursOk.length>0)?0:(a.wksSouh&&a.wksSouh.length>0)?1:a.convenance?3:2;
     const contraB=(b.joursOk&&b.joursOk.length>0)?0:(b.wksSouh&&b.wksSouh.length>0)?1:b.convenance?3:2;
     if(contraA!==contraB)return contraA-contraB;
-    return (PRESTA[b.presta]&&PRESTA[b.presta].needsDoublure?1:0)-(PRESTA[a.presta]&&PRESTA[a.presta].needsDoublure?1:0);
+    return (PRESTA[b.presta]?.needsDoublure?1:0)-(PRESTA[a.presta]?.needsDoublure?1:0);
   });
   let placed=0;
   sorted.forEach(c=>{
@@ -2601,11 +2692,14 @@ function reoptimize(){
     if(best){
       c.planifie=true;c.wkPl=best.wk;c.jour=best.day;c.techId=best.techId;
       if(best.doublureId)c.doublureId=best.doublureId;
+      else c.doublureId=null;
       placed++;
     }
   });
+  // Clustering géo par technicien
+  for(let d=0;d<5;d++) assignerTechsParCluster(wk,d);
   markDirty();autosave();updateBadges();renderPlanning();renderDash();
-  toast('🔄 Réoptimisé : '+placed+'/'+cls.length+' clients replacés en S'+wk,'ok');
+  toast('🔄 Réoptimisé + clusterisé : '+placed+'/'+cls.length+' clients en S'+wk,'ok');
 }
 
 
@@ -2977,6 +3071,258 @@ function techGeoScore(wk,day,techId,cp){
   return avgDist;
 }
 
+/* ════════════════════════════════════════════════════════
+   CLUSTERING GÉO PAR TECHNICIEN
+   Pour chaque jour planifié :
+   - Niv.2 : Tech principal + Tech3 doublure → même cluster (même camion)
+   - Niv.1 : K-means sur coords GPS → un cluster compact par technicien
+   - Tech3 résiduel : cluster propre si heures disponibles après doublures
+   ════════════════════════════════════════════════════════ */
+
+// Centroïde d'un groupe de CP
+function centroid(cps){
+  if(!cps.length)return[BOURGES_LAT,BOURGES_LNG];
+  const coords=cps.map(cp=>cpToCoords(cp));
+  return[
+    coords.reduce((s,c)=>s+c[0],0)/coords.length,
+    coords.reduce((s,c)=>s+c[1],0)/coords.length
+  ];
+}
+
+// Distance euclidienne lat/lng (suffisant pour clustering local)
+function latLngDist(a,b){
+  const dlat=a[0]-b[0], dlng=a[1]-b[1];
+  return Math.sqrt(dlat*dlat+dlng*dlng);
+}
+
+// K-means sur liste de CP, retourne k clusters (indices)
+function kMeans(cps, k, maxIter=20){
+  if(cps.length<=k) return cps.map((_,i)=>[i]); // un client = un cluster
+  const coords=cps.map(cp=>cpToCoords(cp));
+
+  // Init centroides : spread sur l'axe principal (Nord-Sud ou Est-Ouest)
+  // Choisir k seeds les plus éloignés (k-means++)
+  const seeds=[0];
+  while(seeds.length<k){
+    const dists=coords.map((_,i)=>{
+      if(seeds.includes(i))return 0;
+      return Math.min(...seeds.map(s=>latLngDist(coords[i],coords[s])));
+    });
+    const next=dists.indexOf(Math.max(...dists));
+    seeds.push(next);
+  }
+  let centroids=seeds.map(s=>coords[s]);
+  let assignments=new Array(cps.length).fill(0);
+
+  for(let iter=0;iter<maxIter;iter++){
+    // Assigner chaque point au centroïde le plus proche
+    let changed=false;
+    for(let i=0;i<coords.length;i++){
+      let best=0, bestD=Infinity;
+      for(let c=0;c<k;c++){
+        const d=latLngDist(coords[i],centroids[c]);
+        if(d<bestD){bestD=d;best=c;}
+      }
+      if(assignments[i]!==best){assignments[i]=best;changed=true;}
+    }
+    if(!changed)break;
+    // Recalculer centroïdes
+    for(let c=0;c<k;c++){
+      const pts=coords.filter((_,i)=>assignments[i]===c);
+      if(pts.length)centroids[c]=[
+        pts.reduce((s,p)=>s+p[0],0)/pts.length,
+        pts.reduce((s,p)=>s+p[1],0)/pts.length
+      ];
+    }
+  }
+
+  // Construire clusters (tableaux d'indices)
+  const clusters=Array.from({length:k},()=>[]);
+  assignments.forEach((c,i)=>clusters[c].push(i));
+  // Supprimer clusters vides
+  return clusters.filter(c=>c.length>0);
+}
+
+// Ordre de visite optimal (nearest neighbor) pour un technicien
+// Retourne les clients ordonnés
+function tourneePourTech(clients){
+  if(!clients.length)return[];
+  const remaining=[...clients];
+  const route=[];
+  let cur='18000';
+  while(remaining.length){
+    let best=null,bestD=Infinity,bestI=0;
+    remaining.forEach((c,i)=>{
+      const d=geoDistance(cur,c.cp||'18000');
+      if(d<bestD){bestD=d;best=c;bestI=i;}
+    });
+    route.push(best);
+    cur=best.cp||'18000';
+    remaining.splice(bestI,1);
+  }
+  return route;
+}
+
+// Km total d'une tournée (aller depuis Bourges + retour)
+function kmTournee(clients){
+  if(!clients.length)return 0;
+  let km=0,prev='18000';
+  for(const c of clients){km+=geoDistance(prev,c.cp||'18000');prev=c.cp||'18000';}
+  km+=geoDistance(prev,'18000');
+  return km;
+}
+
+// ── ASSIGNATION PRINCIPALE ──
+// Appelée après auto-planif pour re-distribuer les techs de façon optimale
+// Modifie c.techId (et c.doublureId) en place
+function assignerTechsParCluster(wk, day){
+  const dayClients=DB.clients.filter(c=>
+    c.saison===saison&&c.planifie&&c.wkPl===wk&&c.jour===day
+  );
+  if(!dayClients.length)return;
+
+  const dbl=DB.techs[2]; // Tech3 doublure
+  const mains=DB.techs.slice(0,2); // Tech1, Tech2
+
+  // ── Étape 1 : séparer Niv.2 (doublure obligatoire) et Niv.1 ──
+  const niv2=dayClients.filter(c=>PRESTA[c.presta]&&PRESTA[c.presta].needsDoublure);
+  const niv1=dayClients.filter(c=>!PRESTA[c.presta]||!PRESTA[c.presta].needsDoublure);
+
+  // ── Étape 2 : assigner les Niv.2 aux techs principaux ──
+  // Chaque Niv.2 prend un tech principal + Tech3 (même camion)
+  // Si plusieurs Niv.2, les regrouper par tech principal selon cluster géo
+  if(niv2.length){
+    if(niv2.length===1){
+      // Un seul Niv.2 : tech principal le plus proche géo du client
+      const cp=niv2[0].cp||'18000';
+      const best=mains.slice().sort((a,b)=>{
+        const scoreA=slotH(wk,day,a.id);
+        const scoreB=slotH(wk,day,b.id);
+        return scoreA-scoreB;
+      })[0];
+      niv2[0].techId=best.id;
+      if(dbl)niv2[0].doublureId=dbl.id;
+    } else {
+      // Plusieurs Niv.2 : k-means k=min(niv2.length, mains.length)
+      const k=Math.min(niv2.length,mains.length);
+      const clusters=kMeans(niv2.map(c=>c.cp||'18000'),k);
+      // Assigner chaque cluster à un tech principal (par proximité du centroïde à Bourges)
+      const centroidsWithIdx=clusters.map((cl,i)=>({
+        i,
+        cent:centroid(cl.map(idx=>niv2[idx].cp||'18000')),
+        distFromB:latLngDist(centroid(cl.map(idx=>niv2[idx].cp||'18000')),[BOURGES_LAT,BOURGES_LNG])
+      })).sort((a,b)=>a.distFromB-b.distFromB);
+      centroidsWithIdx.forEach((cw,mi)=>{
+        const tech=mains[mi]||mains[0];
+        cw.i; // cluster index
+        clusters[cw.i].forEach(idx=>{
+          niv2[idx].techId=tech.id;
+          if(dbl)niv2[idx].doublureId=dbl.id;
+        });
+      });
+    }
+  }
+
+  // ── Étape 3 : calculer heures Tech3 restantes après doublures ──
+  const heuresDoublure=niv2.reduce((s,c)=>s+(PRESTA[c.presta]?.h||2),0);
+  const heuresDispo3=dbl?Math.max(0,MAX_H-heuresDoublure):0;
+
+  // ── Étape 4 : distribuer les Niv.1 entre techs disponibles ──
+  if(!niv1.length)return;
+
+  // Techs disponibles pour les Niv.1 :
+  // - Tech1 et Tech2 (capacité résiduelle après leurs Niv.2)
+  // - Tech3 si heures disponibles après doublures
+  const techsNiv1=[];
+  mains.forEach(t=>{
+    const heuresNiv2=niv2.filter(c=>c.techId===t.id).reduce((s,c)=>s+(PRESTA[c.presta]?.h||2),0);
+    const dispo=MAX_H-heuresNiv2;
+    if(dispo>0)techsNiv1.push({tech:t,dispo});
+  });
+  if(dbl&&heuresDispo3>0)techsNiv1.push({tech:dbl,dispo:heuresDispo3});
+
+  if(!techsNiv1.length){
+    // Aucun tech dispo → on laisse tel quel
+    return;
+  }
+
+  const k=Math.min(niv1.length,techsNiv1.length);
+
+  if(k===1){
+    // Un seul tech dispo pour les Niv.1
+    niv1.forEach(c=>{c.techId=techsNiv1[0].tech.id;c.doublureId=null;});
+    return;
+  }
+
+  // K-means sur les Niv.1
+  const clusters=kMeans(niv1.map(c=>c.cp||'18000'),k);
+
+  // Associer chaque cluster au tech le plus cohérent géographiquement
+  // Critère : minimiser distance centroïde cluster ↔ centroïde clients Niv.2 du même tech
+  // (pour que Tech1 reste dans sa zone même pour les Niv.1)
+  const clusterCents=clusters.map(cl=>centroid(cl.map(idx=>niv1[idx].cp||'18000')));
+
+  // Pour chaque tech, calculer son "ancrage" géo (centroïde de ses Niv.2 ou Bourges)
+  const techAnchors=techsNiv1.map(({tech})=>{
+    const myNiv2=niv2.filter(c=>c.techId===tech.id);
+    if(myNiv2.length)return centroid(myNiv2.map(c=>c.cp||'18000'));
+    return[BOURGES_LAT,BOURGES_LNG];
+  });
+
+  // Assignation par distance minimale centroïde-cluster ↔ ancrage-tech
+  // (algorithme d'assignation hongrois simplifié pour k≤3)
+  const used=new Set();
+  const assignment=new Array(clusters.length).fill(-1);
+
+  // Trier clusters par distance max à Bourges (le plus loin en premier)
+  const clusterOrder=clusters.map((_,i)=>i)
+    .sort((a,b)=>{
+      const da=latLngDist(clusterCents[a],[BOURGES_LAT,BOURGES_LNG]);
+      const db=latLngDist(clusterCents[b],[BOURGES_LAT,BOURGES_LNG]);
+      return db-da;
+    });
+
+  for(const ci of clusterOrder){
+    let bestTech=-1,bestScore=Infinity;
+    techsNiv1.forEach(({tech},ti)=>{
+      if(used.has(ti))return;
+      const score=latLngDist(clusterCents[ci],techAnchors[ti]);
+      if(score<bestScore){bestScore=score;bestTech=ti;}
+    });
+    if(bestTech>=0){
+      assignment[ci]=bestTech;
+      used.add(bestTech);
+    }
+  }
+
+  // Appliquer l'assignation
+  clusters.forEach((cl,ci)=>{
+    const ti=assignment[ci];
+    const tech=ti>=0?techsNiv1[ti].tech:techsNiv1[0].tech;
+    cl.forEach(idx=>{
+      niv1[idx].techId=tech.id;
+      niv1[idx].doublureId=null;
+    });
+  });
+}
+
+// Appliquer le clustering sur toute une semaine ou toute la saison
+function reClusterSemaine(wk){
+  for(let d=0;d<5;d++) assignerTechsParCluster(wk,d);
+  markDirty();autosave();renderPlanning();
+  toast(`🧭 Tournées S${wk} optimisées par cluster géo`,'ok');
+}
+
+function reClusterAll(){
+  const wks=getWks();
+  const planned=[...new Set(
+    DB.clients.filter(c=>c.saison===saison&&c.planifie).map(c=>c.wkPl)
+  )];
+  planned.forEach(wk=>{ for(let d=0;d<5;d++) assignerTechsParCluster(wk,d); });
+  markDirty();autosave();renderPlanning();renderDash();
+  toast(`🧭 Toutes les tournées optimisées (${planned.length} sem.)`,'ok');
+}
+
 // Score de cohérence d'un jour pour un client :
 // 0 = parfait (jour idéal selon zone), +100 = mauvaise direction
 function dayDirectionScore(cp,day){
@@ -3163,19 +3509,15 @@ function autoAll(){
   const wks=getWks();
   const up=clSaison().filter(c=>!c.planifie)
     .sort((a,b)=>{
-      // P1 : contraintes jour précis en premier (plus contraint = traité en premier)
       const contraA=(a.joursOk&&a.joursOk.length>0)?0:(a.wksSouh&&a.wksSouh.length>0)?1:a.convenance?3:2;
       const contraB=(b.joursOk&&b.joursOk.length>0)?0:(b.wksSouh&&b.wksSouh.length>0)?1:b.convenance?3:2;
       if(contraA!==contraB)return contraA-contraB;
-      // P2 : Niv.2 avant Niv.1 (pour préserver les créneaux doublure)
       const niv2A=PRESTA[a.presta]?.needsDoublure?1:0;
       const niv2B=PRESTA[b.presta]?.needsDoublure?1:0;
       if(niv2A!==niv2B)return niv2B-niv2A;
-      // P3 : même zone géo (département) regroupés ensemble
       const deptA=(a.cp||'').substring(0,2);
       const deptB=(b.cp||'').substring(0,2);
       if(deptA!==deptB)return deptA.localeCompare(deptB);
-      // P4 : semaine la plus tôt
       const wkA=a.wksSouh&&a.wksSouh.length>0?Math.min(...a.wksSouh):(a.wkSouh||99);
       const wkB=b.wksSouh&&b.wksSouh.length>0?Math.min(...b.wksSouh):(b.wkSouh||99);
       return wkA-wkB;
@@ -3193,15 +3535,17 @@ function autoAll(){
       placed++;
     }
   }
+  // ── Clustering géo par technicien sur toutes les semaines affectées ──
+  const wksPlanned=[...new Set(DB.clients.filter(c=>c.saison===saison&&c.planifie).map(c=>c.wkPl))];
+  wksPlanned.forEach(wk=>{ for(let d=0;d<5;d++) assignerTechsParCluster(wk,d); });
   markDirty();autosave();updateBadges();renderDash();renderPlanning();
   if(document.getElementById('view-clients').classList.contains('on'))renderClients();
-  toast(`⚡ Auto-planif : ${placed} client(s) placé(s) — regroupement jour+zone actif`,'ok');
+  toast(`⚡ ${placed} client(s) placés · tournées optimisées par cluster géo`,'ok');
 }
 
 function autoWeek(){
   const w=planWk;let placed=0;
   const wks=getWks().filter(wk=>wk.num===w);
-  // Inclure aussi les clients sans semaine précise (convenance)
   const up=clSaison().filter(c=>!c.planifie&&(
     c.convenance||!c.wkSouh||c.wkSouh===w||
     (c.wksSouh&&c.wksSouh.includes(w))
@@ -3222,8 +3566,10 @@ function autoWeek(){
       placed++;
     }
   }
+  // Clustering géo sur cette semaine
+  for(let d=0;d<5;d++) assignerTechsParCluster(w,d);
   markDirty();autosave();updateBadges();renderPlanning();renderDash();
-  toast(`⚡ S${w} : ${placed} client(s) placé(s)`,'ok');
+  toast(`⚡ S${w} : ${placed} client(s) · tournées clusterisées`,'ok');
 }
 
 /* ════ ZONES GEO ════ */
