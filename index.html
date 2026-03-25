@@ -1782,7 +1782,7 @@ function showCM(id){
     }
   }
 
-  const _mc=document.getElementById('m-client');_mc.classList.add('open');_mc.style.display='flex';
+  openM('m-client');
 }
 function delC(id){
   if(!confirm('Supprimer ce client ?'))return;
@@ -2140,7 +2140,7 @@ function openSlot(wk,day,techId){
         return`<option value="${c.id}">${c.nom} ${c.prenom} — ${pi.lbl||c.presta} · ${c.ville} (${c.cp})${ww}</option>`;
       }).join('')
     :'<option>— Aucun client non planifié —</option>';
-  const _ms=document.getElementById('m-slot');_ms.classList.add('open');_ms.style.display='flex';
+  openM('m-slot');
 }
 function doAssign(){
   const cid=parseFloat(document.getElementById('slot-sel').value);
@@ -2202,7 +2202,7 @@ function openMove(id){
   const daySel=document.getElementById('move-day');
   if(daySel) daySel.value=c.jour||0;
   updateMoveTechOptions();
-  const _mm=document.getElementById('m-move');_mm.classList.add('open');_mm.style.display='flex';
+  openM('m-move');
 }
 
 function updateMoveTechOptions(){
@@ -4095,7 +4095,21 @@ function clearAll(){
 /* ════ UTILS ════ */
 function closeM(id){
   const el=document.getElementById(id);
-  if(el){el.classList.remove('open');el.style.display='none';}
+  if(el){
+    el.style.display='none';
+    el.classList.remove('open');
+  }
+}
+
+function openM(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  // Déplacer le modal directement dans body pour éviter tout conflit CSS
+  document.body.appendChild(el);
+  el.style.cssText='display:flex!important;position:fixed!important;inset:0!important;background:rgba(0,0,0,.55)!important;z-index:9000!important;align-items:center!important;justify-content:center!important;padding:20px!important;box-sizing:border-box!important';
+  el.classList.add('open');
+  // Fermer en cliquant sur le fond
+  el.onclick=function(e){if(e.target===el)closeM(id);};
 }
 function toast(msg,type){
   const t=document.createElement('div');
@@ -4106,6 +4120,12 @@ function toast(msg,type){
 
 /* ════ INIT ════ */
 document.addEventListener('DOMContentLoaded',()=>{
+  // Forcer la fermeture de tous les modals au démarrage
+  ['m-slot','m-client','m-move'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.style.display='none';el.classList.remove('open');}
+  });
+
   // Load from localStorage (autosave restore)
   loadFromLS();
   if(!DB.annee)DB.annee=new Date().getFullYear();
