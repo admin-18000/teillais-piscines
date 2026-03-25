@@ -3361,135 +3361,365 @@ function kmTournee(clients){
 // ── ASSIGNATION PRINCIPALE ──
 // Appelée après auto-planif pour re-distribuer les techs de façon optimale
 // Modifie c.techId (et c.doublureId) en place
+/* ════════════════════════════════════════════════════════
+   VRP — Regroupement par cône directionnel
+   Logique : clients dans le même cône angulaire depuis Bourges
+   = sur le même chemin = même technicien.
+   Puis optimisation nearest-neighbor pour l'ordre de visite.
+   ════════════════════════════════════════════════════════ */
+
+const CONE_DEGRES=55; // clients dans un cône de 55° = même chemin
+
+// Regrouper les clients par cône directionnel depuis Bourges
+// puis distribuer entre nTechs en minimisant km total
+function grouperParCone(clients, nTechs){
+  if(!clients.length)return[];
+  if(clients.length<=nTechs)return clients.map(c=>[c]);
+
+  // Trier par angle depuis Bourges
+  const sorted=[...clients].sort((a,b)=>geoAngle(a.cp||'18000')-geoAngle(b.cp||'18000'));
+
+  // Identifier les groupes naturels (cone de CONE_DEGRES°)
+  const groups=[];
+  let current=[sorted[0]];
+  for(let i=1;i<sorted.length;i++){
+    const angle=geoAngle(sorted[i].cp||'18000');
+    const prevAngle=geoAngle(current[current.length-1].cp||'18000');
+    const diff=Math.min(Math.abs(angle-prevAngle),360-Math.abs(angle-prevAngle));
+    if(diff<=CONE_DEGRES){
+      current.push(sorted[i]);
+    } else {
+      groups.push(current);
+      current=[sorted[i]];
+    }
+  }
+  groups.push(current);
+
+  // Merger les groupes excédentaires (les moins coûteux à combiner)
+  while(groups.length>nTechs){
+    let minCost=Infinity,mergeA=-1,mergeB=-1;
+    for(let i=0;i<groups.length;i++){
+      for(let j=i+1;j<groups.length;j++){
+        const cost=kmTourneeVRP([...groups[i],...groups[j]]);
+        if(cost<minCost){minCost=cost;mergeA=i;mergeB=j;}
+      }
+    }
+    const merged=[...groups[mergeA],...groups[mergeB]];
+    groups.splice(mergeB,1);groups.splice(mergeA,1);groups.push(merged);
+  }
+
+  // Compléter si moins de groupes que de techs (groupes vides tolérés)
+  while(groups.length<nTechs)groups.push([]);
+
+  return groups;
+}
+
 function assignerTechsParCluster(wk, day){
   const dayClients=DB.clients.filter(c=>
     c.saison===saison&&c.planifie&&c.wkPl===wk&&c.jour===day
   );
   if(!dayClients.length)return;
 
-  const dbl=DB.techs[2]; // Tech3 doublure
-  const mains=DB.techs.slice(0,2); // Tech1, Tech2
+  const dbl=DB.techs[2];
+  const mains=DB.techs.slice(0,2);
 
-  // ── Étape 1 : séparer Niv.2 (doublure obligatoire) et Niv.1 ──
-  const niv2=dayClients.filter(c=>PRESTA[c.presta]&&PRESTA[c.presta].needsDoublure);
-  const niv1=dayClients.filter(c=>!PRESTA[c.presta]||!PRESTA[c.presta].needsDoublure);
+  // ── Étape 1 : séparer Niv.2 et Niv.1 ──
+  const niv2=dayClients.filter(c=>PRESTA[c.presta]?.needsDoublure);
+  const niv1=dayClients.filter(c=>!PRESTA[c.presta]?.needsDoublure);
 
-  // ── Étape 2 : assigner les Niv.2 aux techs principaux ──
-  // Chaque Niv.2 prend un tech principal + Tech3 (même camion)
-  // Si plusieurs Niv.2, les regrouper par tech principal selon cluster géo
+  // ── Étape 2 : assigner Niv.2 aux techs principaux par cône ──
   if(niv2.length){
     if(niv2.length===1){
-      // Un seul Niv.2 : tech principal le plus proche géo du client
-      const cp=niv2[0].cp||'18000';
-      const best=mains.slice().sort((a,b)=>{
-        const scoreA=slotH(wk,day,a.id);
-        const scoreB=slotH(wk,day,b.id);
-        return scoreA-scoreB;
-      })[0];
-      niv2[0].techId=best.id;
+      niv2[0].techId=mains[0].id;
       if(dbl)niv2[0].doublureId=dbl.id;
     } else {
-      // Plusieurs Niv.2 : k-means k=min(niv2.length, mains.length)
       const k=Math.min(niv2.length,mains.length);
-      const clusters=kMeans(niv2.map(c=>c.cp||'18000'),k);
-      // Assigner chaque cluster à un tech principal (par proximité du centroïde à Bourges)
-      const centroidsWithIdx=clusters.map((cl,i)=>({
-        i,
-        cent:centroid(cl.map(idx=>niv2[idx].cp||'18000')),
-        distFromB:latLngDist(centroid(cl.map(idx=>niv2[idx].cp||'18000')),[BOURGES_LAT,BOURGES_LNG])
-      })).sort((a,b)=>a.distFromB-b.distFromB);
-      centroidsWithIdx.forEach((cw,mi)=>{
+      const groups=grouperParCone(niv2,k);
+      groups.forEach((g,mi)=>{
+        if(!g.length)return;
         const tech=mains[mi]||mains[0];
-        cw.i; // cluster index
-        clusters[cw.i].forEach(idx=>{
-          niv2[idx].techId=tech.id;
-          if(dbl)niv2[idx].doublureId=dbl.id;
-        });
+        g.forEach(c=>{c.techId=tech.id;if(dbl)c.doublureId=dbl.id;});
       });
     }
   }
 
-  // ── Étape 3 : calculer heures Tech3 restantes après doublures ──
+  // ── Étape 3 : heures Tech3 résiduelles ──
   const heuresDoublure=niv2.reduce((s,c)=>s+(PRESTA[c.presta]?.h||2),0);
   const heuresDispo3=dbl?Math.max(0,MAX_H-heuresDoublure):0;
 
-  // ── Étape 4 : distribuer les Niv.1 entre techs disponibles ──
   if(!niv1.length)return;
 
-  // Techs disponibles pour les Niv.1 :
-  // - Tech1 et Tech2 (capacité résiduelle après leurs Niv.2)
-  // - Tech3 si heures disponibles après doublures
+  // ── Étape 4 : distribuer Niv.1 par cône entre techs disponibles ──
   const techsNiv1=[];
   mains.forEach(t=>{
     const heuresNiv2=niv2.filter(c=>c.techId===t.id).reduce((s,c)=>s+(PRESTA[c.presta]?.h||2),0);
     const dispo=MAX_H-heuresNiv2;
-    if(dispo>0)techsNiv1.push({tech:t,dispo});
+    if(dispo>0)techsNiv1.push({tech:t,dispo,niv2clients:niv2.filter(c=>c.techId===t.id)});
   });
-  if(dbl&&heuresDispo3>0)techsNiv1.push({tech:dbl,dispo:heuresDispo3});
+  if(dbl&&heuresDispo3>0)techsNiv1.push({tech:dbl,dispo:heuresDispo3,niv2clients:[]});
 
-  if(!techsNiv1.length){
-    // Aucun tech dispo → on laisse tel quel
-    return;
-  }
+  if(!techsNiv1.length)return;
 
   const k=Math.min(niv1.length,techsNiv1.length);
 
   if(k===1){
-    // Un seul tech dispo pour les Niv.1
     niv1.forEach(c=>{c.techId=techsNiv1[0].tech.id;c.doublureId=null;});
     return;
   }
 
-  // K-means sur les Niv.1
-  const clusters=kMeans(niv1.map(c=>c.cp||'18000'),k);
+  // Regrouper par cône en tenant compte de l'ancrage des Niv.2
+  // (si Tech1 a un Niv.2 à Nevers, son cône est orienté vers Nevers)
+  const groups=grouperParCone(niv1,k);
 
-  // Associer chaque cluster au tech le plus cohérent géographiquement
-  // Critère : minimiser distance centroïde cluster ↔ centroïde clients Niv.2 du même tech
-  // (pour que Tech1 reste dans sa zone même pour les Niv.1)
-  const clusterCents=clusters.map(cl=>centroid(cl.map(idx=>niv1[idx].cp||'18000')));
-
-  // Pour chaque tech, calculer son "ancrage" géo (centroïde de ses Niv.2 ou Bourges)
-  const techAnchors=techsNiv1.map(({tech})=>{
-    const myNiv2=niv2.filter(c=>c.techId===tech.id);
-    if(myNiv2.length)return centroid(myNiv2.map(c=>c.cp||'18000'));
-    return[BOURGES_LAT,BOURGES_LNG];
-  });
-
-  // Assignation par distance minimale centroïde-cluster ↔ ancrage-tech
-  // (algorithme d'assignation hongrois simplifié pour k≤3)
+  // Associer chaque groupe au tech dont le cône est le plus cohérent
+  // Critère : minimiser km total (tournée Niv.2 existants + Niv.1 du groupe)
   const used=new Set();
-  const assignment=new Array(clusters.length).fill(-1);
+  const assignment=new Array(groups.length).fill(-1);
+  // Traiter les groupes les plus lourds en premier
+  const groupOrder=groups.map((_,i)=>i)
+    .sort((a,b)=>groups[b].length-groups[a].length);
 
-  // Trier clusters par distance max à Bourges (le plus loin en premier)
-  const clusterOrder=clusters.map((_,i)=>i)
-    .sort((a,b)=>{
-      const da=latLngDist(clusterCents[a],[BOURGES_LAT,BOURGES_LNG]);
-      const db=latLngDist(clusterCents[b],[BOURGES_LAT,BOURGES_LNG]);
-      return db-da;
-    });
-
-  for(const ci of clusterOrder){
-    let bestTech=-1,bestScore=Infinity;
-    techsNiv1.forEach(({tech},ti)=>{
+  for(const gi of groupOrder){
+    if(!groups[gi].length)continue;
+    let bestTech=-1,bestKm=Infinity;
+    techsNiv1.forEach(({tech,dispo,niv2clients},ti)=>{
       if(used.has(ti))return;
-      const score=latLngDist(clusterCents[ci],techAnchors[ti]);
-      if(score<bestScore){bestScore=score;bestTech=ti;}
+      // Vérifier capacité
+      const h=groups[gi].reduce((s,c)=>s+(PRESTA[c.presta]?.h||1),0);
+      if(h>dispo)return;
+      // Coût : tournée avec Niv.2 + ce groupe
+      const km=kmTourneeVRP([...niv2clients,...groups[gi]]);
+      if(km<bestKm){bestKm=km;bestTech=ti;}
     });
     if(bestTech>=0){
-      assignment[ci]=bestTech;
+      assignment[gi]=bestTech;
       used.add(bestTech);
     }
   }
 
-  // Appliquer l'assignation
-  clusters.forEach((cl,ci)=>{
-    const ti=assignment[ci];
-    const tech=ti>=0?techsNiv1[ti].tech:techsNiv1[0].tech;
-    cl.forEach(idx=>{
-      niv1[idx].techId=tech.id;
-      niv1[idx].doublureId=null;
-    });
+  // Appliquer
+  groups.forEach((g,gi)=>{
+    if(!g.length)return;
+    const ti=assignment[gi]>=0?assignment[gi]:0;
+    const tech=techsNiv1[ti]?.tech||techsNiv1[0].tech;
+    g.forEach(c=>{c.techId=tech.id;c.doublureId=null;});
   });
+}
+
+// Km total d'une tournée nearest-neighbor depuis Bourges
+// avec bonus colinéarité : favorise les clients sur le même axe de déplacement
+function kmTourneeVRP(clients){
+  if(!clients.length)return 0;
+  const rem=[...clients];
+  let km=0,cur='18000';
+  while(rem.length){
+    let best=null,bd=Infinity,bi=0;
+    rem.forEach((c,i)=>{const d=geoDistance(cur,c.cp||'18000');if(d<bd){bd=d;best=c;bi=i;}});
+    km+=bd;cur=best.cp||'18000';rem.splice(bi,1);
+  }
+  return km+geoDistance(cur,'18000');
+}
+
+// Coût VRP avec pénalité de déviation angulaire
+// Un technicien qui doit faire un détour de direction paie une pénalité
+function kmTourneeVRPWithPenalty(clients){
+  if(!clients.length)return 0;
+  if(clients.length===1)return geoDistance('18000',clients[0].cp||'18000')*2;
+  const rem=[...clients];
+  let km=0,cur='18000',prevAngle=null;
+  const PENALTY_PAR_DEGRE=0.3; // 0.3km de pénalité par degré de déviation
+  while(rem.length){
+    let best=null,bd=Infinity,bi=0;
+    rem.forEach((c,i)=>{
+      const d=geoDistance(cur,c.cp||'18000');
+      // Pénalité angulaire si on dévie de la direction actuelle
+      let penalty=0;
+      if(prevAngle!==null){
+        const newAngle=geoAngle(c.cp||'18000');
+        const diff=Math.min(Math.abs(newAngle-prevAngle),360-Math.abs(newAngle-prevAngle));
+        penalty=diff*PENALTY_PAR_DEGRE;
+      }
+      if(d+penalty<bd){bd=d+penalty;best=c;bi=i;}
+    });
+    km+=geoDistance(cur,best.cp||'18000');
+    prevAngle=geoAngle(best.cp||'18000');
+    cur=best.cp||'18000';
+    rem.splice(bi,1);
+  }
+  return km+geoDistance(cur,'18000');
+}
+
+// Générer toutes les partitions possibles de n clients en k groupes
+// Pour n<=10 et k<=3, c'est raisonnable (~3^10=59049 max)
+function partitionner(clients, k){
+  if(k===1)return[[clients.map((_,i)=>i)]];
+  const n=clients.length;
+  const results=[];
+  // Chaque client est assigné à un groupe 0..k-1
+  function recurse(idx,groups){
+    if(idx===n){
+      // Vérifier que tous les groupes ont au moins 1 client
+      if(groups.every(g=>g.length>0))results.push(groups.map(g=>[...g]));
+      return;
+    }
+    for(let g=0;g<k;g++){
+      groups[g].push(idx);
+      recurse(idx+1,groups);
+      groups[g].pop();
+    }
+  }
+  recurse(0,Array.from({length:k},()=>[]));
+  return results;
+}
+
+// Version simplifiée pour grands n : beam search sur les meilleures partitions
+function partitionnerBeam(clients, k, beamWidth=200){
+  if(clients.length<=8)return partitionner(clients,k);
+  // Pour n>8, on utilise une heuristique : nearest neighbor multi-routes
+  // Initialiser avec nearest-neighbor depuis Bourges pour chaque technicien
+  const n=clients.length;
+  // Générer beamWidth partitions aléatoires pondérées par distance
+  const results=[];
+  for(let iter=0;iter<beamWidth;iter++){
+    const groups=Array.from({length:k},()=>[]);
+    const remaining=[...clients.map((_,i)=>i)];
+    const cursors=Array(k).fill('18000');
+    while(remaining.length>0){
+      // Technicien avec le moins d'heures
+      const techH=groups.map(g=>g.reduce((s,i)=>s+(PRESTA[clients[i].presta]?.h||1),0));
+      const minH=Math.min(...techH);
+      const candidates=groups.map((_,ti)=>techH[ti]<=minH+1?ti:-1).filter(ti=>ti>=0);
+      const ti=candidates[Math.floor(Math.random()*candidates.length)];
+      // Client le plus proche du curseur de ce tech
+      let best=-1,bd=Infinity;
+      remaining.forEach(i=>{
+        const d=geoDistance(cursors[ti],clients[i].cp||'18000');
+        if(d<bd){bd=d;best=i;}
+      });
+      if(best>=0){
+        groups[ti].push(best);
+        cursors[ti]=clients[best].cp||'18000';
+        remaining.splice(remaining.indexOf(best),1);
+      }
+    }
+    if(groups.every(g=>g.length>0))results.push(groups);
+  }
+  return results;
+}
+
+function assignerTechsParCluster(wk, day){
+  const dayClients=DB.clients.filter(c=>
+    c.saison===saison&&c.planifie&&c.wkPl===wk&&c.jour===day
+  );
+  if(!dayClients.length)return;
+
+  const dbl=DB.techs[2];
+  const mains=DB.techs.slice(0,2);
+
+  // ── Étape 1 : séparer Niv.2 et Niv.1 ──
+  const niv2=dayClients.filter(c=>PRESTA[c.presta]?.needsDoublure);
+  const niv1=dayClients.filter(c=>!PRESTA[c.presta]?.needsDoublure);
+
+  // ── Étape 2 : assigner Niv.2 aux techs principaux via VRP ──
+  if(niv2.length){
+    if(niv2.length===1){
+      niv2[0].techId=mains[0].id;
+      if(dbl)niv2[0].doublureId=dbl.id;
+    } else {
+      // VRP sur les Niv.2 : répartir entre techs principaux en minimisant km total
+      const k=Math.min(niv2.length,mains.length);
+      const partitions=partitionnerBeam(niv2,k,150);
+      let bestKm=Infinity,bestPartition=null;
+      partitions.forEach(groups=>{
+        const totalKm=groups.reduce((s,g)=>s+kmTourneeVRPWithPenalty(g.map(i=>niv2[i])),0);
+        if(totalKm<bestKm){bestKm=totalKm;bestPartition=groups;}
+      });
+      if(bestPartition){
+        // Assigner chaque groupe au tech principal par ordre km croissant
+        const groupsWithKm=bestPartition.map((g,i)=>({
+          g,i,km:kmTourneeVRP(g.map(i=>niv2[i]))
+        })).sort((a,b)=>a.km-b.km);
+        groupsWithKm.forEach(({g},mi)=>{
+          const tech=mains[mi]||mains[0];
+          g.forEach(idx=>{
+            niv2[idx].techId=tech.id;
+            if(dbl)niv2[idx].doublureId=dbl.id;
+          });
+        });
+      }
+    }
+  }
+
+  // ── Étape 3 : heures Tech3 résiduelles ──
+  const heuresDoublure=niv2.reduce((s,c)=>s+(PRESTA[c.presta]?.h||2),0);
+  const heuresDispo3=dbl?Math.max(0,MAX_H-heuresDoublure):0;
+
+  if(!niv1.length)return;
+
+  // ── Étape 4 : VRP sur Niv.1 ──
+  const techsNiv1=[];
+  mains.forEach(t=>{
+    const heuresNiv2=niv2.filter(c=>c.techId===t.id).reduce((s,c)=>s+(PRESTA[c.presta]?.h||2),0);
+    const dispo=MAX_H-heuresNiv2;
+    if(dispo>0)techsNiv1.push({tech:t,dispo,niv2clients:niv2.filter(c=>c.techId===t.id)});
+  });
+  if(dbl&&heuresDispo3>0)techsNiv1.push({tech:dbl,dispo:heuresDispo3,niv2clients:[]});
+
+  if(!techsNiv1.length)return;
+
+  const k=Math.min(niv1.length,techsNiv1.length);
+
+  if(k===1){
+    niv1.forEach(c=>{c.techId=techsNiv1[0].tech.id;c.doublureId=null;});
+    return;
+  }
+
+  // VRP : trouver la répartition qui minimise le km total des tournées
+  // En tenant compte des Niv.2 déjà assignés à chaque tech (ancrage géo)
+  const partitions=partitionnerBeam(niv1,k,300);
+  let bestKm=Infinity,bestPartition=null;
+
+  partitions.forEach(groups=>{
+    // Contrainte capacité : vérifier que chaque groupe respecte les heures dispo
+    const valid=groups.every((g,ti)=>{
+      if(ti>=techsNiv1.length)return false;
+      const h=g.reduce((s,i)=>s+(PRESTA[niv1[i].presta]?.h||1),0);
+      return h<=techsNiv1[ti].dispo;
+    });
+    if(!valid)return;
+
+    // Coût total = somme des tournées de chaque tech avec pénalité angulaire
+    // La tournée inclut ses Niv.2 existants + ses Niv.1 assignés
+    const totalKm=groups.reduce((s,g,ti)=>{
+      if(ti>=techsNiv1.length)return s;
+      const allClients=[
+        ...techsNiv1[ti].niv2clients,
+        ...g.map(i=>niv1[i])
+      ];
+      return s+kmTourneeVRPWithPenalty(allClients);
+    },0);
+
+    if(totalKm<bestKm){bestKm=totalKm;bestPartition=groups;}
+  });
+
+  // Appliquer la meilleure répartition
+  if(bestPartition){
+    bestPartition.forEach((g,ti)=>{
+      if(ti>=techsNiv1.length)return;
+      const tech=techsNiv1[ti].tech;
+      g.forEach(idx=>{
+        niv1[idx].techId=tech.id;
+        niv1[idx].doublureId=null;
+      });
+    });
+  } else {
+    // Fallback : distribution séquentielle si aucune partition valide
+    niv1.forEach((c,i)=>{
+      const ti=i%techsNiv1.length;
+      c.techId=techsNiv1[ti].tech.id;
+      c.doublureId=null;
+    });
+  }
 }
 
 // Appliquer le clustering sur toute une semaine ou toute la saison
