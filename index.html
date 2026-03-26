@@ -4241,34 +4241,30 @@ function renderZonesConfig(){
   if(!cont)return;
   const zones=getZones();
   cont.innerHTML=zones.map((z,i)=>{
-    const villesLabel=z.cps?z.cps.map(cp=>{
-      const known={
-        '18000':'Bourges','18100':'Vierzon','18200':'St-Amand-Montrond',
-        '18110':'Argent-sur-Sauldre','18130':'Baugy','18150':'La Guerche',
-        '18160':'Lignières','18170':'Aubigny-sur-Nère','18180':'Mehun-sur-Yèvre',
-        '18230':'St-Doulchard','18270':'Sancerre','18300':'St-Florent-sur-Cher',
-        '18320':'Charost','18350':'Ménetou-Couture','18380':'La Chapelle-St-Ursin',
-        '18390':'Osmoy','18410':'Argent (bis)','18440':'Bruère-Allichamps',
-        '18500':'Mehun','18550':'St-Germain-du-Puy','18600':'Sancoins',
-      };
-      return known[cp]||cp;
-    }).join(', '):'';
-    const angleInfo=z.maxDist?
-      `📍 Local ≤ ${z.maxDist}km`:
-      `(angle ${z.angleMin||0}°→${z.angleMax||360}° pour clients hors 18)`;
+    const known={
+      '18000':'Bourges','18100':'Vierzon','18200':'St-Amand-Montrond',
+      '18110':'Argent-sur-Sauldre','18130':'Baugy','18150':'La Guerche',
+      '18160':'Lignières','18170':'Aubigny-sur-Nère','18180':'Mehun-sur-Yèvre',
+      '18230':'St-Doulchard','18270':'Sancerre','18300':'St-Florent-sur-Cher',
+      '18320':'Charost','18350':'Ménetou-Couture','18380':'La Chapelle-St-Ursin',
+      '18390':'Osmoy','18410':'Argent-sur-Sauldre','18440':'Bruère-Allichamps',
+      '18500':'Mehun-sur-Yèvre','18550':'St-Germain-du-Puy','18600':'Sancoins',
+    };
+    const villesLabel=z.cps?z.cps.map(cp=>known[cp]||cp).join(', '):(z.label||'');
+    const infoSecondaire=z.maxDist
+      ?`📍 Local ≤ ${z.maxDist}km · Jour associé : ${ZONE_DAY_NAMES[z.day]}`
+      :`Jour associé : ${ZONE_DAY_NAMES[z.day]} · (angle ${z.angleMin||0}°→${z.angleMax||360}° hors 18)`;
     return`<div style="padding:12px;background:var(--bg);border-radius:9px;border-left:4px solid ${z.color};margin-bottom:8px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <span style="font-weight:800;font-size:14px;color:${z.color}">${ZONE_DAY_NAMES[z.day]}</span>
-        <div style="display:flex;gap:4px">
-          <button onclick="moveZoneDay(${i},-1)" style="background:none;border:1px solid var(--bdr);border-radius:4px;padding:1px 6px;cursor:pointer;font-size:11px">↑</button>
-          <button onclick="moveZoneDay(${i},1)"  style="background:none;border:1px solid var(--bdr);border-radius:4px;padding:1px 6px;cursor:pointer;font-size:11px">↓</button>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:14px;color:var(--t);margin-bottom:4px">${villesLabel}</div>
+          <div style="font-size:11px;color:var(--t3)">${infoSecondaire}</div>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button onclick="moveZoneDay(${i},-1)" style="background:none;border:1px solid var(--bdr);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:12px" title="Décaler vers lundi">↑</button>
+          <button onclick="moveZoneDay(${i},1)"  style="background:none;border:1px solid var(--bdr);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:12px" title="Décaler vers vendredi">↓</button>
         </div>
       </div>
-      <div style="font-size:13px;font-weight:600;color:var(--t);margin-bottom:4px">
-        🏘️ Villes de référence :
-      </div>
-      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">${villesLabel||z.label}</div>
-      <div style="font-size:10px;color:var(--t3)">${angleInfo}</div>
     </div>`;
   }).join('');
 }
@@ -4323,10 +4319,32 @@ function moveZoneDay(i,dir){
 }
 function resetZones(){
   if(!confirm('Réinitialiser les zones aux villes par défaut ?'))return;
-  DB.zones=null;
-  getZones();
+  // Forcer reconstruction depuis VILLES_PAR_JOUR
+  DB.zones=Object.entries(VILLES_PAR_JOUR).map(([day,z])=>({
+    day:parseInt(day),
+    label:z.label,
+    cps:[...z.cps],
+    angleMin:z.angleMin||0,
+    angleMax:z.angleMax||360,
+    maxDist:z.maxDist||null,
+    color:z.color
+  }));
   renderZonesConfig();markDirty();autosave();
   toast('🧭 Zones réinitialisées aux villes du Cher','ok');
+}
+
+// Au chargement : si les zones sauvegardées n'ont pas de cps (ancienne version), forcer reset
+function migrateZones(){
+  if(!DB.zones||!DB.zones.length)return;
+  const hasOldFormat=DB.zones.some(z=>!z.cps||!z.cps.length);
+  if(hasOldFormat){
+    DB.zones=Object.entries(VILLES_PAR_JOUR).map(([day,z])=>({
+      day:parseInt(day),label:z.label,cps:[...z.cps],
+      angleMin:z.angleMin||0,angleMax:z.angleMax||360,
+      maxDist:z.maxDist||null,color:z.color
+    }));
+    markDirty();autosave();
+  }
 }
 function addTech(){
   DB.techs.push({id:Date.now(),nom:'Nouveau technicien',color:'#'+Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0')});
@@ -4419,6 +4437,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(!DB.annee)DB.annee=new Date().getFullYear();
   if(!DB.cfg)DB.cfg={};
   if(!DB.zones||!DB.zones.length)getZones();
+  migrateZones(); // Migration ancienne → nouvelle version zones par ville
   if(!DB.saisonsActives)DB.saisonsActives={ouverture:true,entretien:true,hivernage:false};
   rebuildWKS();
 
