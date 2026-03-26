@@ -2163,11 +2163,9 @@ function doAssign(){
   const pi=PRESTA[c.presta]||{h:1};
   const currentH=slotH(wk,day,techId);
   const newH=currentH+(pi.h||1);
-  // Hard block at MAX_H
-  if(newH>MAX_H)return toast('⚠ Capacite insuffisante pour ce technicien','err');
-  // Warning at 80%
-  if(newH>MAX_H*0.8&&newH<=MAX_H){
-    toast('⚠ Journee chargee : '+newH+'h/'+MAX_H+'h','warn');
+  // Avertissement si journée chargée (plus de blocage)
+  if(newH>MAX_H){
+    toast('⚠ Journée chargée : '+newH+'h — vérifiez la faisabilité','warn');
   }
   // Check geo alert: if this client is far from others in the same slot
   const slotCls=clSaison().filter(x=>x.planifie&&x.wkPl===wk&&x.jour===day&&x.techId===techId);
@@ -2243,8 +2241,7 @@ function updateMoveTechOptions(){
     const extra=(c.wkPl===wk&&c.jour===day&&c.techId===selTechId)?(pi.h||1):0;
     const newH=cu+(pi.h||1)-extra;
     if(warn){
-      if(newH>MAX_H){warn.style.display='block';warn.textContent='⚠ Capacité dépassée ('+newH+'h/'+MAX_H+'h) — impossible';}
-      else if(newH>MAX_H*0.85){warn.style.display='block';warn.textContent='⚠ Journée chargée : '+newH+'h/'+MAX_H+'h';}
+      if(newH>MAX_H){warn.style.display='block';warn.textContent='⚠ Journée chargée : '+newH+'h — possible mais à vérifier sur le terrain';}
       else warn.style.display='none';
     }
   }
@@ -2258,10 +2255,10 @@ function doMove(){
   const day=parseInt(document.getElementById('move-day')?.value)||0;
   const techId=parseInt(document.getElementById('move-tech')?.value)||0;
   if(!techId)return toast('⚠ Choisir un technicien','err');
-  // Check capacity (excluding current slot)
   const extra=(c.wkPl===wk&&c.jour===day&&c.techId===techId)?(pi.h||1):0;
   const newH=slotH(wk,day,techId)+(pi.h||1)-extra;
-  if(newH>MAX_H)return toast('⚠ Capacité insuffisante','err');
+  // Avertissement si chargé (plus de blocage)
+  if(newH>MAX_H) toast('⚠ Journée chargée : '+newH+'h — vérifiez la faisabilité','warn');
   // Unplan then replan
   c.planifie=true;c.wkPl=wk;c.jour=day;c.techId=techId;
   // Handle doublure for Niv.2
@@ -3034,6 +3031,7 @@ const CP_COORDS = {
   '18490':[47.2199,2.6781], // Morogues
   '18500':[47.1476,2.2267], // Mehun-sur-Yèvre (bis)
   '18510':[47.1847,1.9948], // Méry-sur-Cher
+  '18520':[47.0328,2.6333], // Avord
   '18520':[47.1894,2.0207], // Neuvy-sur-Barangeon
   '18530':[46.7512,2.6740], // Charenton-du-Cher
   '18550':[47.0769,2.4419], // Saint-Germain-du-Puy
@@ -3226,28 +3224,28 @@ function distFromBourges(cp){
 
 // Villes de référence du Cher par jour — restent dans le 18
 const VILLES_PAR_JOUR = {
-  0: { // Lundi — Nord
-    label: 'Aubigny, Argent-sur-Sauldre',
-    cps: ['18170','18110','18410'],  // Aubigny, Argent, Vailly
+  0: { // Lundi — Nord (Aubigny, Argent)
+    label: 'Aubigny-sur-Nère, Argent-sur-Sauldre',
+    cps: ['18170','18110'],  // Aubigny, Argent — sans doublon
     angleMin:315, angleMax:45, color:'#0057FF'
   },
-  1: { // Mardi — Nord-Est
-    label: 'Sancerre, Baugy, La Guerche',
-    cps: ['18270','18130','18150','18350'],
+  1: { // Mardi — Nord-Est (Sancerre, Baugy, Avord)
+    label: 'Sancerre, Baugy, La Guerche, Avord',
+    cps: ['18270','18130','18150','18350','18520'],  // Sancerre, Baugy, La Guerche, Ménetou-Couture, Avord
     angleMin:45, angleMax:135, color:'#7C3AED'
   },
-  2: { // Mercredi — Sud
-    label: 'Saint-Amand, Lignières, Sancoins',
-    cps: ['18200','18160','18600','18440'],
+  2: { // Mercredi — Sud (Saint-Amand, Lignières, Sancoins)
+    label: 'Saint-Amand-Montrond, Lignières, Sancoins',
+    cps: ['18200','18160','18600','18440'],  // St-Amand, Lignières, Sancoins, Bruère
     angleMin:135, angleMax:225, color:'#059669'
   },
-  3: { // Jeudi — Ouest/Sud-Ouest
-    label: 'Vierzon, Issoudun, Saint-Florent',
-    cps: ['18100','18300','18320','18500'],
+  3: { // Jeudi — Ouest (Vierzon, Saint-Florent, Saint-Doulchard proche)
+    label: 'Vierzon, Saint-Florent-sur-Cher, Charost',
+    cps: ['18100','18300','18320','18500'],  // Vierzon, St-Florent, Charost, Mehun
     angleMin:225, angleMax:315, color:'#D97706'
   },
-  4: { // Vendredi — Local Bourges
-    label: 'Bourges et proches',
+  4: { // Vendredi — Local Bourges et proches
+    label: 'Bourges, Saint-Doulchard, La Chapelle, Saint-Germain-du-Puy',
     cps: ['18000','18230','18380','18550','18180','18390'],
     maxDist: 20, color:'#DC2626'
   }
@@ -3503,20 +3501,19 @@ function assignerTechsParCluster(wk, day){
     }
   }
 
-  // ── Étape 3 : heures Tech3 résiduelles ──
-  const heuresDoublure=niv2.reduce((s,c)=>s+(PRESTA[c.presta]?.h||2),0);
-  const heuresDispo3=dbl?Math.max(0,MAX_H-heuresDoublure):0;
+  // ── Étape 3 : Tech3 disponible après doublures ──
+  // Pas de limite MAX_H — Melvin gère la charge lui-même
+  const aDoublure=niv2.length>0&&dbl;
 
   if(!niv1.length)return;
 
   // ── Étape 4 : distribuer Niv.1 par cône entre techs disponibles ──
   const techsNiv1=[];
   mains.forEach(t=>{
-    const heuresNiv2=niv2.filter(c=>c.techId===t.id).reduce((s,c)=>s+(PRESTA[c.presta]?.h||2),0);
-    const dispo=MAX_H-heuresNiv2;
-    if(dispo>0)techsNiv1.push({tech:t,dispo,niv2clients:niv2.filter(c=>c.techId===t.id)});
+    techsNiv1.push({tech:t,dispo:99,niv2clients:niv2.filter(c=>c.techId===t.id)});
   });
-  if(dbl&&heuresDispo3>0)techsNiv1.push({tech:dbl,dispo:heuresDispo3,niv2clients:[]});
+  // Tech3 toujours disponible pour Niv.1 (doublure ou non)
+  if(dbl) techsNiv1.push({tech:dbl,dispo:99,niv2clients:[]});
 
   if(!techsNiv1.length)return;
 
@@ -3710,20 +3707,15 @@ function assignerTechsParCluster(wk, day){
     }
   }
 
-  // ── Étape 3 : heures Tech3 résiduelles ──
-  const heuresDoublure=niv2.reduce((s,c)=>s+(PRESTA[c.presta]?.h||2),0);
-  const heuresDispo3=dbl?Math.max(0,MAX_H-heuresDoublure):0;
-
+  // ── Étape 3 : Tech3 disponible ──
   if(!niv1.length)return;
 
-  // ── Étape 4 : VRP sur Niv.1 ──
+  // ── Étape 4 : VRP sur Niv.1 — pas de limite de charge ──
   const techsNiv1=[];
   mains.forEach(t=>{
-    const heuresNiv2=niv2.filter(c=>c.techId===t.id).reduce((s,c)=>s+(PRESTA[c.presta]?.h||2),0);
-    const dispo=MAX_H-heuresNiv2;
-    if(dispo>0)techsNiv1.push({tech:t,dispo,niv2clients:niv2.filter(c=>c.techId===t.id)});
+    techsNiv1.push({tech:t,dispo:99,niv2clients:niv2.filter(c=>c.techId===t.id)});
   });
-  if(dbl&&heuresDispo3>0)techsNiv1.push({tech:dbl,dispo:heuresDispo3,niv2clients:[]});
+  if(dbl) techsNiv1.push({tech:dbl,dispo:99,niv2clients:[]});
 
   if(!techsNiv1.length)return;
 
@@ -3904,8 +3896,8 @@ function findBestSlot(client, wks, preferWk){
       if(pi.needsDoublure){
         const dbl=DB.techs[2];
         if(!dbl)continue;
-        if(slotH(wk.num,d,dbl.id)+pi.h>MAX_H)continue;
-        const mains=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
+        // Pas de blocage MAX_H — Melvin gère la charge
+        const mains=DB.techs.slice(0,2);
         if(!mains.length)continue;
         const scored=mains.map(t=>({t,s:slotScore(wk.num,d,t.id,constraint.score)}))
           .sort((a,b)=>a.s-b.s);
@@ -3917,10 +3909,9 @@ function findBestSlot(client, wks, preferWk){
         const tech3HasNiv2=dbl?DB.clients.some(x=>
           x.saison===saison&&x.planifie&&x.wkPl===wk.num&&x.jour===d&&
           x.doublureId===dbl.id):false;
-        const eligibles=DB.techs.slice(0,2).filter(t=>slotH(wk.num,d,t.id)+pi.h<=MAX_H);
-        if(dbl&&!tech3HasNiv2&&slotH(wk.num,d,dbl.id)+pi.h<=MAX_H){
-          eligibles.push(dbl);
-        }
+        // Pas de blocage MAX_H — tous les techs sont éligibles
+        const eligibles=[...DB.techs.slice(0,2)];
+        if(dbl&&!tech3HasNiv2) eligibles.push(dbl);
         if(!eligibles.length)continue;
         const scored=eligibles.map(t=>({t,s:slotScore(wk.num,d,t.id,constraint.score)}))
           .sort((a,b)=>a.s-b.s);
