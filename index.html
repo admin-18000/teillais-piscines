@@ -4327,8 +4327,12 @@ function resetZones(){
 // Au chargement : si les zones sauvegardées n'ont pas de cps (ancienne version), forcer reset
 function migrateZones(){
   if(!DB.zones||!DB.zones.length)return;
+  // Détecter ancienne version : pas de cps, ou doublon 18410, ou Avord (18520) absent
   const hasOldFormat=DB.zones.some(z=>!z.cps||!z.cps.length);
-  if(hasOldFormat){
+  const hasDoublon=DB.zones.some(z=>z.cps&&z.cps.includes('18410'));
+  const hasAvord=DB.zones.some(z=>z.cps&&z.cps.includes('18520'));
+  const hasOldLabels=DB.zones.some(z=>z.label&&(z.label.includes('(45')||z.label.includes('(58')||z.label.includes('(03')||z.label.includes('(36')||z.label.includes('(41')));
+  if(hasOldFormat||hasDoublon||!hasAvord||hasOldLabels){
     DB.zones=Object.entries(VILLES_PAR_JOUR).map(([day,z])=>({
       day:parseInt(day),label:z.label,cps:[...z.cps],
       angleMin:z.angleMin||0,angleMax:z.angleMax||360,
