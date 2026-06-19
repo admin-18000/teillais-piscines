@@ -351,7 +351,7 @@ input[type="file"]{display:none}
   <div class="stabs">
     <button class="stab ouverture active" onclick="setSaison('ouverture',this)" title="Ouvertures">🌊</button>
     <button class="stab entretien" onclick="setSaison('entretien',this)" title="Entretien">🧴</button>
-    <button class="stab hivernage" onclick="saisonIndispo()" title="Hivernages — tarifs en cours de mise à jour">❄️</button>
+    <button class="stab hivernage" onclick="saisonIndispo('hivernage')" title="Hivernages — tarifs en cours de mise à jour">❄️</button>
   </div>
   <div class="hdr-acts">
     <div class="as-dot" id="as-dot"></div>
@@ -783,8 +783,9 @@ input[type="file"]{display:none}
   <div class="card">
     <div class="ch"><div class="ct">🔧 Équipe techniciens</div><button class="btn bp sm" onclick="addTech()">+ Ajouter</button></div>
     <div class="cb">
-      <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.5">Les 2 premiers techniciens effectuent les interventions. Le 3e est la doublure.</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.5">Chaque technicien a un rôle : <strong>Principal</strong> (effectue les interventions) ou <strong>Doublure</strong> (assiste les principaux sur les Niveau 2). L'algorithme utilise tous les principaux et une seule doublure.</div>
       <div id="techs-list"></div>
+      <div id="techs-warn"></div>
     </div>
   </div>
 
@@ -1105,6 +1106,8 @@ input[type="file"]{display:none}
 <div id="more-panel" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:499;background:#fff;border-radius:22px 22px 0 0;padding:8px 0 0">
   <div style="width:40px;height:4px;background:var(--bdr);border-radius:2px;margin:10px auto 14px"></div>
   <button onclick="showV('zones');updateMobileNav('zones');closeMore()" style="display:flex;align-items:center;gap:14px;padding:16px 22px;border:none;background:none;width:100%;font-size:15px;font-weight:600;color:var(--t);cursor:pointer;font-family:var(--f)"><span style="font-size:22px">🗺️</span>Zones géographiques</button>
+  <button onclick="showV('route');updateMobileNav('route');closeMore()" style="display:flex;align-items:center;gap:14px;padding:16px 22px;border:none;background:none;width:100%;font-size:15px;font-weight:600;color:var(--t);cursor:pointer;font-family:var(--f)"><span style="font-size:22px">🚗</span>Feuilles de route</button>
+  <button onclick="showV('finances');updateMobileNav('finances');closeMore()" style="display:flex;align-items:center;gap:14px;padding:16px 22px;border:none;background:none;width:100%;font-size:15px;font-weight:600;color:var(--t);cursor:pointer;font-family:var(--f)"><span style="font-size:22px">💰</span>Finances &amp; Export</button>
   <button onclick="showV('techniciens');updateMobileNav('techniciens');closeMore()" style="display:flex;align-items:center;gap:14px;padding:16px 22px;border:none;background:none;width:100%;font-size:15px;font-weight:600;color:var(--t);cursor:pointer;font-family:var(--f)"><span style="font-size:22px">⚙️</span>Paramètres</button>
   <button onclick="showV('aide');updateMobileNav('aide');closeMore()" style="display:flex;align-items:center;gap:14px;padding:16px 22px;border:none;background:none;width:100%;font-size:15px;font-weight:600;color:var(--t);cursor:pointer;font-family:var(--f)"><span style="font-size:22px">❓</span>Mode opératoire</button>
   <div style="height:1px;background:var(--bdr);margin:4px 16px"></div>
@@ -1192,12 +1195,27 @@ let DB={
   annee:new Date().getFullYear(),
   clients:[],
   techs:[
-    {id:1,nom:'Technicien 1',color:'#0057FF'},
-    {id:2,nom:'Technicien 2',color:'#DB2777'},
-    {id:3,nom:'Technicien 3 (doublure)',color:'#D97706'}
+    {id:1,nom:'Technicien 1',color:'#0057FF',role:'main'},
+    {id:2,nom:'Technicien 2',color:'#DB2777',role:'main'},
+    {id:3,nom:'Technicien 3 (doublure)',color:'#D97706',role:'doublure'}
   ],
   cfg:{}
 };
+
+/* ════ ROLES TECHNICIENS ════
+   Les rôles ('main' ou 'doublure') sont portés par chaque tech, plus par
+   l'index dans le tableau. La doublure assiste les mains sur les Niv.2.
+   Migration : les anciens DB sans champ role utilisent l'ancienne convention
+   (les 2 premiers = main, le 3e = doublure, le reste = main).             */
+function migrateTechs(){
+  if(!DB.techs||!DB.techs.length)return;
+  if(DB.techs.every(t=>t.role))return; // déjà migré
+  DB.techs.forEach((t,i)=>{
+    if(!t.role) t.role = (i===2 ? 'doublure' : 'main');
+  });
+}
+function getMains(){ return DB.techs.filter(t=>t.role!=='doublure'); }
+function getDoublure(){ return DB.techs.find(t=>t.role==='doublure')||null; }
 
 // Auto-detect season based on current month
 function detectSaison(){
@@ -1208,8 +1226,13 @@ function detectSaison(){
   return'ouverture';
 }
 
-function saisonIndispo(){
-  toast('❄️ Tarifs hivernage 2026 en cours de mise à jour — à activer dans ⚙️ Paramètres','warn');
+function saisonIndispo(s){
+  const msgs={
+    hivernage:'❄️ Hivernages — tarifs 2026 en cours de mise à jour. Activez dans ⚙️ Paramètres.',
+    entretien:'🧴 Entretien — non disponible actuellement.',
+    ouverture:'🌊 Ouvertures — non disponible actuellement.',
+  };
+  toast(msgs[s]||'Saison non disponible','warn');
 }
 
 function toggleSaison(s, active){
@@ -1256,15 +1279,6 @@ function applyTogglesSaisons(){
   }
 }
 
-function saisonIndispo(s){
-  const msgs={
-    hivernage:'❄️ Hivernages — tarifs 2026 en cours de mise à jour. Activez dans ⚙️ Paramètres.',
-    entretien:'🧴 Entretien — non disponible actuellement.',
-    ouverture:'🌊 Ouvertures — non disponible actuellement.',
-  };
-  toast(msgs[s]||'Saison non disponible','warn');
-}
-
 let saison=detectSaison();
 let planWk=null;
 let pendSlot=null;
@@ -1277,7 +1291,7 @@ let currentClientId=null;
 function markDirty(){
   _dirty=true;
   const dot=document.getElementById('as-dot');
-  if(dot)dot.className='autosave-dot dirty';
+  if(dot)dot.className='as-dot dirty';
 }
 function autosave(){
   if(!_dirty)return;
@@ -1286,7 +1300,7 @@ function autosave(){
     localStorage.setItem(LS_KEY,JSON.stringify(DB)); // legacy compat
     _dirty=false;
     const dot=document.getElementById('as-dot');
-    if(dot)dot.className='autosave-dot';
+    if(dot)dot.className='as-dot';
   }catch(e){/* quota exceeded or private mode */}
 }
 function loadFromLS(){
@@ -1318,7 +1332,7 @@ function setYear(y){
   if(av){const id=av.id.replace('view-','');
     const fn={clients:renderClients,planning:renderPlanning,zones:renderZones};
     if(fn[id])fn[id]();}
-  markDirty();toast(`📅 Année : ${y}`,'ok');
+  markDirty();autosave();toast(`📅 Année : ${y}`,'ok');
 }
 
 function syncYearLabels(){
@@ -1428,7 +1442,7 @@ function renderWkSel(){
   const c=document.getElementById('wksel');if(!c)return;
   const hcls=saison==='hivernage'?'hv':saison==='entretien'?'et':'';
   c.innerHTML=wks.map(w=>{
-    const maxH=MAX_H*5*Math.min(DB.techs.filter((_,i)=>i<2).length,2);
+    const maxH=MAX_H*5*Math.max(1,getMains().length);
     const usedH=wkHours(w.num);
     const full=usedH>=maxH;
     const pct=maxH>0?Math.round(usedH/maxH*100):0;
@@ -1531,7 +1545,7 @@ function showHint(){
   const hint=document.getElementById('ahint');if(!hint)return;
   const p=PRESTA[fP];if(!p){hint.style.display='none';return;}
   const wks=getWks();
-  const maxH=MAX_H*5*Math.min(DB.techs.filter((_,i)=>i<2).length,2);
+  const maxH=MAX_H*5*Math.max(1,getMains().length);
   for(const w of wks){
     if(wkHours(w.num)+(p.h||0)<=maxH){
       document.getElementById('ahint-txt').textContent=`S${w.num} (${w.lbl}) disponible — cliquez ci-dessous`;
@@ -1568,10 +1582,12 @@ function saveClient(){
   const email2=document.getElementById('f-email').value.trim();
   const notes=document.getElementById('f-notes').value.trim();
   // Search both planned and unplanned clients for duplicates
+  // Critère : même nom+prénom (saison courante) OU adresse complète identique
+  // (adresse + CP + ville — pour éviter de fusionner des cohabitants distincts)
   const existing=DB.clients.find(c=>
     c.saison===saison&&(
       (c.nom===nom&&c.prenom===prenom)||
-      (adresse&&c.adresse&&c.adresse===adresse)
+      (adresse&&c.adresse&&c.adresse===adresse&&c.cp===cp&&c.ville===ville&&c.nom===nom)
     )
   );
   let savedClient;
@@ -1579,23 +1595,36 @@ function saveClient(){
     const wasPlanned=existing.planifie;
     const oldWk=existing.wkPl;
     const oldDay=existing.jour;
+    // Détecter changement structurel : prestation, CP, contraintes de placement
+    // (le reste — tel/email/notes/ville/adresse — ne nécessite pas de re-plan)
+    const newWkSouh=fWks.length>0?Math.min(...fWks):fWk;
+    const newWksSouh=[...fWks];
+    const newJoursOk=[...fJours];
+    const structuralChange=
+      existing.presta!==fP ||
+      existing.cp!==cp ||
+      existing.convenance!==fConvenance ||
+      JSON.stringify(existing.wksSouh||[])!==JSON.stringify(newWksSouh) ||
+      JSON.stringify(existing.joursOk||[])!==JSON.stringify(newJoursOk);
     // Update all fields
     existing.presta=fP;
     existing.opts={...fO,selQty:sq,remise};
-    existing.wkSouh=fWks.length>0?Math.min(...fWks):fWk;
-    existing.wksSouh=fWks;
+    existing.wkSouh=newWkSouh;
+    existing.wksSouh=newWksSouh;
     existing.convenance=fConvenance;
-    existing.joursOk=fJours;
+    existing.joursOk=newJoursOk;
     existing.montant=+montant.toFixed(2);
     existing.tel=tel;existing.email=email2;
     existing.adresse=adresse;
     existing.notes=notes;existing.notesTech=(document.getElementById('f-notes-tech')?document.getElementById('f-notes-tech').value.trim():'');
     existing.ville=ville;existing.cp=cp;
     existing.updatedAt=new Date().toISOString();
-    // If was planned: deplan so algo can re-place with new preferences
-    if(wasPlanned){
+    // Déplanifier uniquement si contraintes ou prestation modifiées
+    if(wasPlanned&&structuralChange){
       existing.planifie=false;existing.techId=null;existing.jour=null;existing.wkPl=null;existing.doublureId=null;
       toast('&#9989; '+prenom+' '+nom+' mis a jour — deplanifie pour reoptimisation (etait S'+oldWk+' '+['Lun','Mar','Mer','Jeu','Ven'][oldDay]+')','warn');
+    } else if(wasPlanned){
+      toast('&#9989; '+prenom+' '+nom+' mis a jour (creneau S'+oldWk+' '+['Lun','Mar','Mer','Jeu','Ven'][oldDay]+' conserve)','ok');
     } else {
       toast('&#9989; '+prenom+' '+nom+' mis a jour (fiche existante)','ok');
     }
@@ -2069,19 +2098,26 @@ function renderGeoAlerts(w){
 
 function fmtD(s,off){const d=new Date(s);d.setDate(d.getDate()+off);return`${d.getDate()}/${d.getMonth()+1}`;}
 function slotC(wk,day,techId){
-  // Retourne les clients affectés à ce tech ce jour
-  // Pour le Tech3 (doublure) : inclut aussi les Niv.2 où il est doublure
+  // Retourne les clients affectés à ce tech ce jour, ORDONNÉS comme dans
+  // la feuille de route (nearest-neighbor depuis Bourges) pour que les
+  // heures d'arrivée affichées sur le planning correspondent à la réalité.
+  // Pour le Tech3 (doublure) : inclut aussi les Niv.2 où il est doublure.
   const direct=DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===wk&&c.jour===day&&c.techId===techId);
   const asDoublure=DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===wk&&c.jour===day&&c.doublureId===techId&&c.techId!==techId);
-  // Merge sans doublon
   const ids=new Set(direct.map(c=>c.id));
   const merged=[...direct,...asDoublure.filter(c=>!ids.has(c.id))];
-  return merged;
+  // Réordonner par tournée optimisée pour cohérence avec la feuille de route
+  return typeof optimiserOrdre==='function'?optimiserOrdre(merged):merged;
 }
 function slotH(wk,day,techId){
-  // Pour la capacité : on compte les heures du tech en tant que principal uniquement
-  // (le doublure partage le même créneau, on ne double pas les heures)
-  return DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===wk&&c.jour===day&&c.techId===techId)
+  // Compte les heures réelles d'occupation du tech sur ce créneau :
+  // - clients où il est principal (techId)
+  // - clients où il est doublure (Niv.2 cosignés)
+  // Le doublure est physiquement sur site avec le tech principal, donc il
+  // est occupé pour les mêmes heures. On ne double pas sa charge à l'échelle
+  // de la semaine (wkHours) car la prestation reste comptée 1 fois, mais
+  // au niveau du créneau le doublure ne peut pas prendre un autre client.
+  return DB.clients.filter(c=>c.saison===saison&&c.planifie&&c.wkPl===wk&&c.jour===day&&(c.techId===techId||c.doublureId===techId))
     .reduce((s,c)=>s+(PRESTA[c.presta]?.h||1),0);
 }
 
@@ -2119,9 +2155,9 @@ function sortGeo(){
     const pi=PRESTA[c.presta]||{h:1,techs:1};
     for(let d=0;d<5;d++){
       if(pi.needsDoublure){
-        const dbl=DB.techs[2];
+        const dbl=getDoublure();
         if(dbl&&slotH(w,d,dbl.id)+pi.h<=MAX_H){
-          const mn=DB.techs.slice(0,2).filter(t=>slotH(w,d,t.id)+pi.h<=MAX_H);
+          const mn=getMains().filter(t=>slotH(w,d,t.id)+pi.h<=MAX_H);
           if(mn.length){c.planifie=true;c.wkPl=w;c.jour=d;c.techId=mn[0].id;c.doublureId=dbl.id;placed++;break;}
         }
       } else {
@@ -2177,8 +2213,8 @@ function doAssign(){
   }
   c.planifie=true;c.techId=techId;c.jour=day;c.wkPl=wk;
   // Handle doublure for Niv.2
-  if(pi.needsDoublure&&DB.techs[2]){
-    c.doublureId=DB.techs[2].id;
+  if(pi.needsDoublure&&getDoublure()){
+    c.doublureId=getDoublure().id;
   }
   closeM('m-slot');markDirty();autosave();updateBadges();renderPlanning();renderDash();
   toast('✅ '+c.prenom+' '+c.nom+' → '+DAYS[day]+' S'+wk,'ok');
@@ -2227,7 +2263,7 @@ function updateMoveTechOptions(){
   const warn=document.getElementById('move-cap-warn');
   if(!techSel)return;
   // Build eligible techs (exclude doublure for Niv.2 main slot)
-  const eligibles=pi.needsDoublure?DB.techs.slice(0,2):DB.techs;
+  const eligibles=pi.needsDoublure?getMains():DB.techs;
   techSel.innerHTML=eligibles.map(t=>{
     const cur=slotH(wk,day,t.id);
     const avail=MAX_H-cur+(c.wkPl===wk&&c.jour===day&&c.techId===t.id?(pi.h||1):0);
@@ -2262,7 +2298,7 @@ function doMove(){
   // Unplan then replan
   c.planifie=true;c.wkPl=wk;c.jour=day;c.techId=techId;
   // Handle doublure for Niv.2
-  if(pi.needsDoublure&&DB.techs[2])c.doublureId=DB.techs[2].id;
+  if(pi.needsDoublure&&getDoublure())c.doublureId=getDoublure().id;
   else c.doublureId=null;
   closeM('m-move');pendMove=null;
   markDirty();autosave();updateBadges();renderPlanning();renderDash();
@@ -2579,7 +2615,10 @@ function renderFinances(){
   const doublons=[];
   cls.forEach((c,i)=>{
     cls.slice(i+1).forEach(c2=>{
-      if((c.nom===c2.nom&&c.prenom===c2.prenom)||(c.adresse&&c.adresse===c2.adresse)){
+      // Doublon = même nom+prenom, OU adresse complète identique + même nom de famille
+      // (évite de flagger des cohabitants distincts comme doublons)
+      if((c.nom===c2.nom&&c.prenom===c2.prenom)||
+         (c.adresse&&c.adresse===c2.adresse&&c.cp===c2.cp&&c.ville===c2.ville&&c.nom===c2.nom)){
         doublons.push([c,c2]);
       }
     });
@@ -2660,31 +2699,6 @@ function exportJSON(){
   a.click();
   URL.revokeObjectURL(url);
   toast('💾 Sauvegarde exportee','ok');
-}
-
-function importJSON(input){
-  const file=input.files[0];
-  if(!file)return;
-  const reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      const data=JSON.parse(e.target.result);
-      if(!data.clients||!Array.isArray(data.clients)){
-        toast('Fichier invalide','err');return;
-      }
-      if(confirm('Importer ces donnees ? Les donnees actuelles seront remplacees.')){
-        Object.assign(DB,data);
-        markDirty();autosave();
-        renderDash();updateBadges();
-        toast('✅ '+data.clients.length+' clients importes','ok');
-        renderFinances();
-      }
-    }catch(err){
-      toast('Erreur lecture fichier','err');
-    }
-  };
-  reader.readAsText(file);
-  input.value='';
 }
 
 function exportCSV(){
@@ -3419,149 +3433,6 @@ function kmTournee(clients){
 // ── ASSIGNATION PRINCIPALE ──
 // Appelée après auto-planif pour re-distribuer les techs de façon optimale
 // Modifie c.techId (et c.doublureId) en place
-/* ════════════════════════════════════════════════════════
-   VRP — Regroupement par cône directionnel
-   Logique : clients dans le même cône angulaire depuis Bourges
-   = sur le même chemin = même technicien.
-   Puis optimisation nearest-neighbor pour l'ordre de visite.
-   ════════════════════════════════════════════════════════ */
-
-const CONE_DEGRES=55; // clients dans un cône de 55° = même chemin
-
-// Regrouper les clients par cône directionnel depuis Bourges
-// puis distribuer entre nTechs en minimisant km total
-function grouperParCone(clients, nTechs){
-  if(!clients.length)return[];
-  if(clients.length<=nTechs)return clients.map(c=>[c]);
-
-  // Trier par angle depuis Bourges
-  const sorted=[...clients].sort((a,b)=>geoAngle(a.cp||'18000')-geoAngle(b.cp||'18000'));
-
-  // Identifier les groupes naturels (cone de CONE_DEGRES°)
-  const groups=[];
-  let current=[sorted[0]];
-  for(let i=1;i<sorted.length;i++){
-    const angle=geoAngle(sorted[i].cp||'18000');
-    const prevAngle=geoAngle(current[current.length-1].cp||'18000');
-    const diff=Math.min(Math.abs(angle-prevAngle),360-Math.abs(angle-prevAngle));
-    if(diff<=CONE_DEGRES){
-      current.push(sorted[i]);
-    } else {
-      groups.push(current);
-      current=[sorted[i]];
-    }
-  }
-  groups.push(current);
-
-  // Merger les groupes excédentaires (les moins coûteux à combiner)
-  while(groups.length>nTechs){
-    let minCost=Infinity,mergeA=-1,mergeB=-1;
-    for(let i=0;i<groups.length;i++){
-      for(let j=i+1;j<groups.length;j++){
-        const cost=kmTourneeVRP([...groups[i],...groups[j]]);
-        if(cost<minCost){minCost=cost;mergeA=i;mergeB=j;}
-      }
-    }
-    const merged=[...groups[mergeA],...groups[mergeB]];
-    groups.splice(mergeB,1);groups.splice(mergeA,1);groups.push(merged);
-  }
-
-  // Compléter si moins de groupes que de techs (groupes vides tolérés)
-  while(groups.length<nTechs)groups.push([]);
-
-  return groups;
-}
-
-function assignerTechsParCluster(wk, day){
-  const dayClients=DB.clients.filter(c=>
-    c.saison===saison&&c.planifie&&c.wkPl===wk&&c.jour===day
-  );
-  if(!dayClients.length)return;
-
-  const dbl=DB.techs[2];
-  const mains=DB.techs.slice(0,2);
-
-  // ── Étape 1 : séparer Niv.2 et Niv.1 ──
-  const niv2=dayClients.filter(c=>PRESTA[c.presta]?.needsDoublure);
-  const niv1=dayClients.filter(c=>!PRESTA[c.presta]?.needsDoublure);
-
-  // ── Étape 2 : assigner Niv.2 aux techs principaux par cône ──
-  if(niv2.length){
-    if(niv2.length===1){
-      niv2[0].techId=mains[0].id;
-      if(dbl)niv2[0].doublureId=dbl.id;
-    } else {
-      const k=Math.min(niv2.length,mains.length);
-      const groups=grouperParCone(niv2,k);
-      groups.forEach((g,mi)=>{
-        if(!g.length)return;
-        const tech=mains[mi]||mains[0];
-        g.forEach(c=>{c.techId=tech.id;if(dbl)c.doublureId=dbl.id;});
-      });
-    }
-  }
-
-  // ── Étape 3 : Tech3 disponible après doublures ──
-  // Pas de limite MAX_H — Melvin gère la charge lui-même
-  const aDoublure=niv2.length>0&&dbl;
-
-  if(!niv1.length)return;
-
-  // ── Étape 4 : distribuer Niv.1 par cône entre techs disponibles ──
-  const techsNiv1=[];
-  mains.forEach(t=>{
-    techsNiv1.push({tech:t,dispo:99,niv2clients:niv2.filter(c=>c.techId===t.id)});
-  });
-  // Tech3 toujours disponible pour Niv.1 (doublure ou non)
-  if(dbl) techsNiv1.push({tech:dbl,dispo:99,niv2clients:[]});
-
-  if(!techsNiv1.length)return;
-
-  const k=Math.min(niv1.length,techsNiv1.length);
-
-  if(k===1){
-    niv1.forEach(c=>{c.techId=techsNiv1[0].tech.id;c.doublureId=null;});
-    return;
-  }
-
-  // Regrouper par cône en tenant compte de l'ancrage des Niv.2
-  // (si Tech1 a un Niv.2 à Nevers, son cône est orienté vers Nevers)
-  const groups=grouperParCone(niv1,k);
-
-  // Associer chaque groupe au tech dont le cône est le plus cohérent
-  // Critère : minimiser km total (tournée Niv.2 existants + Niv.1 du groupe)
-  const used=new Set();
-  const assignment=new Array(groups.length).fill(-1);
-  // Traiter les groupes les plus lourds en premier
-  const groupOrder=groups.map((_,i)=>i)
-    .sort((a,b)=>groups[b].length-groups[a].length);
-
-  for(const gi of groupOrder){
-    if(!groups[gi].length)continue;
-    let bestTech=-1,bestKm=Infinity;
-    techsNiv1.forEach(({tech,dispo,niv2clients},ti)=>{
-      if(used.has(ti))return;
-      // Vérifier capacité
-      const h=groups[gi].reduce((s,c)=>s+(PRESTA[c.presta]?.h||1),0);
-      if(h>dispo)return;
-      // Coût : tournée avec Niv.2 + ce groupe
-      const km=kmTourneeVRP([...niv2clients,...groups[gi]]);
-      if(km<bestKm){bestKm=km;bestTech=ti;}
-    });
-    if(bestTech>=0){
-      assignment[gi]=bestTech;
-      used.add(bestTech);
-    }
-  }
-
-  // Appliquer
-  groups.forEach((g,gi)=>{
-    if(!g.length)return;
-    const ti=assignment[gi]>=0?assignment[gi]:0;
-    const tech=techsNiv1[ti]?.tech||techsNiv1[0].tech;
-    g.forEach(c=>{c.techId=tech.id;c.doublureId=null;});
-  });
-}
 
 // Km total d'une tournée nearest-neighbor depuis Bourges
 // avec bonus colinéarité : favorise les clients sur le même axe de déplacement
@@ -3670,8 +3541,8 @@ function assignerTechsParCluster(wk, day){
   );
   if(!dayClients.length)return;
 
-  const dbl=DB.techs[2];
-  const mains=DB.techs.slice(0,2);
+  const dbl=getDoublure();
+  const mains=getMains();
 
   // ── Étape 1 : séparer Niv.2 et Niv.1 ──
   const niv2=dayClients.filter(c=>PRESTA[c.presta]?.needsDoublure);
@@ -3801,9 +3672,18 @@ function dayDirectionScore(cp,day){
   const idealZone=zones.find(z=>z.day===ideal);
   const candidateZone=zones.find(z=>z.day===day);
   if(!idealZone||!candidateZone)return 50;
-  // Calcul distance angulaire entre centres des deux zones
-  const midAngle=z=>(z.maxDist?180:((z.angleMin+z.angleMax)/2+360)%360);
+  // Calcul du centre angulaire d'une zone — gère le wrap autour de 0°
+  // (ex: zone Lundi avec min=315°, max=45° → centre=0°, pas 180°)
+  const midAngle=z=>{
+    if(z.maxDist)return null; // zone locale → pas d'angle
+    const lo=z.angleMin||0, hi=z.angleMax||360;
+    if(lo<=hi)return (lo+hi)/2;
+    // Wrap : aller de lo à hi+360 puis ramener mod 360
+    return ((lo+hi+360)/2)%360;
+  };
   const a1=midAngle(idealZone), a2=midAngle(candidateZone);
+  // Si l'une des zones est locale (Vendredi), pénalité forfaitaire moyenne
+  if(a1===null||a2===null)return 50;
   const diff=Math.min(Math.abs(a1-a2),360-Math.abs(a1-a2));
   return Math.round(diff/3.6); // 0-100
 }
@@ -3840,7 +3720,7 @@ function findBestSlot(client, wks, preferWk){
     // Pénalité > 100km si client isolé (pas d'autres clients ce jour dans la zone)
     const far100 = dist>100&&sameZoneDay===0 ? 50 : 0;
     // Bonus tech3 doublure
-    const dbl=DB.techs[2];
+    const dbl=getDoublure();
     const tech3Active=pi.needsDoublure&&dbl?slotH(wk,d,dbl.id)>0?-20:0:0;
     return dirScore*2 + charge*8 + geoNorm*0.3 + zoneBonus + far100 + tech3Active + (constraintScore||0)*5;
   }
@@ -3894,10 +3774,10 @@ function findBestSlot(client, wks, preferWk){
       const isSuggested=!isInPreferred(wk.num);
 
       if(pi.needsDoublure){
-        const dbl=DB.techs[2];
+        const dbl=getDoublure();
         if(!dbl)continue;
         // Pas de blocage MAX_H — Melvin gère la charge
-        const mains=DB.techs.slice(0,2);
+        const mains=getMains();
         if(!mains.length)continue;
         const scored=mains.map(t=>({t,s:slotScore(wk.num,d,t.id,constraint.score)}))
           .sort((a,b)=>a.s-b.s);
@@ -3905,12 +3785,12 @@ function findBestSlot(client, wks, preferWk){
         if(!best||score<best.score)
           best={wk:wk.num,day:d,techId:scored[0].t.id,doublureId:dbl.id,score,isSuggested};
       } else {
-        const dbl=DB.techs[2];
+        const dbl=getDoublure();
         const tech3HasNiv2=dbl?DB.clients.some(x=>
           x.saison===saison&&x.planifie&&x.wkPl===wk.num&&x.jour===d&&
           x.doublureId===dbl.id):false;
         // Pas de blocage MAX_H — tous les techs sont éligibles
-        const eligibles=[...DB.techs.slice(0,2)];
+        const eligibles=[...getMains()];
         if(dbl&&!tech3HasNiv2) eligibles.push(dbl);
         if(!eligibles.length)continue;
         const scored=eligibles.map(t=>({t,s:slotScore(wk.num,d,t.id,constraint.score)}))
@@ -4173,7 +4053,7 @@ function renderDash(){
       +'<div style="width:1px;background:var(--bdr);align-self:stretch"></div>'
       +'<div style="flex:1">'
       +(unplacedClients>0
-        ?'<div style="font-weight:700;font-size:14px;color:'+urgency+'">&#9203; '+unplacedClients+' client'+(unplacedClients>1?'s':'')+' non planifie'+(unplacedClients>1?'s':''+'</div>')
+        ?'<div style="font-weight:700;font-size:14px;color:'+urgency+'">&#9203; '+unplacedClients+' client'+(unplacedClients>1?'s':'')+' non planifie'+(unplacedClients>1?'s':'')+'</div>'
         :'<div style="font-weight:700;font-size:14px;color:var(--G)">&#9989; Tous les clients sont planifies !</div>')
       +'<div style="font-size:12px;color:var(--t2);margin-top:4px">Prochaine semaine : S'+futureWks[0].num+' ('+futureWks[0].lbl+')</div>'
       +'</div>'
@@ -4186,7 +4066,7 @@ function renderDash(){
     wks.map(wk=>{
       const cnt=all.filter(c=>c.planifie&&c.wkPl===wk.num).length;
       const hu=all.filter(c=>c.planifie&&c.wkPl===wk.num).reduce((s,c)=>s+(PRESTA[c.presta]?.h||1),0);
-      const maxH=MAX_H*5*Math.min(DB.techs.length,2);
+      const maxH=MAX_H*5*Math.max(1,getMains().length);
       const pct=Math.min(100,hu/maxH*100);
       const col=pct>85?'var(--R)':pct>60?'var(--O)':isH?'#7C3AED':isE?'#059669':'var(--B)';
       return`<div style="text-align:center;min-width:55px;cursor:pointer" onclick="showV('planning');planWk=${wk.num};renderPlanning()">
@@ -4203,13 +4083,25 @@ function renderDash(){
 /* ════ TECHNICIENS ════ */
 function renderTechs(){
   document.getElementById('techs-list').innerHTML=DB.techs.map((t,i)=>`
-    <div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--bdr)">
+    <div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--bdr);flex-wrap:wrap">
       <div style="width:13px;height:32px;border-radius:3px;background:${t.color};flex-shrink:0"></div>
-      <div style="flex:1"><input class="fi" value="${t.nom}" onchange="DB.techs[${i}].nom=this.value;markDirty();autosave()" style="max-width:230px"></div>
+      <div style="flex:1;min-width:140px"><input class="fi" value="${t.nom}" onchange="DB.techs[${i}].nom=this.value;markDirty();autosave()" style="max-width:230px"></div>
+      <select class="fs" onchange="setTechRole(${t.id},this.value)" style="max-width:140px;font-size:13px" title="Rôle du technicien">
+        <option value="main"${(t.role||'main')==='main'?' selected':''}>Principal</option>
+        <option value="doublure"${t.role==='doublure'?' selected':''}>Doublure</option>
+      </select>
       <input type="color" value="${t.color}" onchange="DB.techs[${i}].color=this.value;renderTechs();markDirty();autosave()"
         style="width:32px;height:32px;border-radius:5px;border:1px solid var(--bdr);cursor:pointer;padding:2px">
       <button class="btn bd sm" onclick="remTech(${t.id})">Retirer</button>
     </div>`).join('');
+  // Avertissement si configuration "interdite"
+  const ndbl=DB.techs.filter(t=>t.role==='doublure').length;
+  const warn=document.getElementById('techs-warn');
+  if(warn){
+    if(ndbl>1)warn.innerHTML='<div style="background:#FEE2E2;color:#991B1B;border-radius:8px;padding:10px;font-size:12px;margin-top:8px">⚠ Plusieurs techniciens marqués comme « Doublure ». L\'algorithme n\'en utilise qu\'une.</div>';
+    else if(getMains().length===0)warn.innerHTML='<div style="background:#FEE2E2;color:#991B1B;border-radius:8px;padding:10px;font-size:12px;margin-top:8px">⚠ Aucun technicien principal — la planification ne peut pas fonctionner.</div>';
+    else warn.innerHTML='';
+  }
   const y=DB.annee||new Date().getFullYear();
   const yd=document.getElementById('yr-display');if(yd)yd.textContent=y;
   const cfg=DB.cfg||{};
@@ -4222,6 +4114,13 @@ function renderTechs(){
   updateWkRangeLabels();
   renderZonesConfig();
   applyTogglesSaisons();
+}
+
+function setTechRole(id,role){
+  const t=DB.techs.find(x=>x.id===id);
+  if(!t)return;
+  t.role=role;
+  markDirty();autosave();renderTechs();
 }
 
 /* ════ CONFIGURATION ZONES DIRECTIONNELLES ════ */
@@ -4342,7 +4241,7 @@ function migrateZones(){
   }
 }
 function addTech(){
-  DB.techs.push({id:Date.now(),nom:'Nouveau technicien',color:'#'+Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0')});
+  DB.techs.push({id:Date.now(),nom:'Nouveau technicien',color:'#'+Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0'),role:'main'});
   renderTechs();markDirty();autosave();
 }
 function remTech(id){
@@ -4374,17 +4273,41 @@ function doImport(e){
   const r=new FileReader();
   r.onload=ev=>{
     try{
-      DB=JSON.parse(ev.target.result);
+      const data=JSON.parse(ev.target.result);
+      if(!data.clients||!Array.isArray(data.clients)){
+        toast('⚠ Fichier JSON invalide (pas de clients)','err');
+        e.target.value='';return;
+      }
+      if(!confirm('Importer ces données ? Les données actuelles seront remplacées.\n\n'+
+                  data.clients.length+' clients · année '+(data.annee||'?'))){
+        e.target.value='';return;
+      }
+      DB=data;
       if(!DB.annee)DB.annee=new Date().getFullYear();
       if(!DB.cfg)DB.cfg={};
+      if(!DB.techs||!DB.techs.length){
+        DB.techs=[
+          {id:1,nom:'Technicien 1',color:'#0057FF',role:'main'},
+          {id:2,nom:'Technicien 2',color:'#DB2777',role:'main'},
+          {id:3,nom:'Technicien 3 (doublure)',color:'#D97706',role:'doublure'}
+        ];
+      }
+      migrateTechs();
       rebuildWKS();syncYearLabels();
       const wks=getWks();if(wks.length)planWk=wks[0].num;
+      markDirty();autosave();
       updateBadges();renderDash();renderWkSel();
       if(document.getElementById('view-techniciens').classList.contains('on'))renderTechs();
-      toast(`⬆ Données importées (${DB.clients?.length||0} clients, année ${DB.annee})`,'ok');
-    }catch{toast('⚠ Fichier JSON invalide','err');}
+      toast('⬆ '+DB.clients.length+' clients importés (année '+DB.annee+')','ok');
+    }catch(err){toast('⚠ Fichier JSON invalide','err');}
+    e.target.value='';
   };
-  r.readAsText(f);e.target.value='';
+  r.readAsText(f);
+}
+
+// Alias pour le bouton "Importer" de la vue Finances (même comportement)
+function importJSON(input){
+  doImport({target:input});
 }
 function clearAll(){
   if(!confirm('Effacer TOUTES les données ? Cette action est irréversible.'))return;
@@ -4433,6 +4356,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(!DB.cfg)DB.cfg={};
   if(!DB.zones||!DB.zones.length)getZones();
   migrateZones(); // Migration ancienne → nouvelle version zones par ville
+  migrateTechs(); // Migration : ajoute le champ "role" aux techs si absent
   if(!DB.saisonsActives)DB.saisonsActives={ouverture:true,entretien:true,hivernage:false};
   rebuildWKS();
 
@@ -4693,11 +4617,6 @@ document.addEventListener('keydown',function(e){
 
 
 </script>
-<script>
-/* mobile nav moved to inline script */
-</script>
-
-</script>
 
 <script>
 /* ════ MOBILE NAV + SIDEBAR + PILLS ════ */
@@ -4769,49 +4688,5 @@ window.addEventListener('resize', () => {
 });
 </script>
 
-<script>
-/* ════ PWA ════ */
-(function() {
-  'use strict';
-  const scheme = location.protocol;
-  if ('serviceWorker' in navigator && (scheme === 'http:' || scheme === 'https:')) {
-    const swCode = "const CACHE='tp-v3';self.addEventListener('install',e=>{self.skipWaiting();});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener('fetch',e=>{if(e.request.method!=='GET'||!e.request.url.startsWith('http'))return;e.respondWith(caches.match(e.request).then(cached=>{const net=fetch(e.request).then(r=>{if(r&&r.ok){const cl=r.clone();caches.open(CACHE).then(c=>c.put(e.request,cl));}return r;}).catch(()=>null);return cached||(net.then(r=>r||new Response('Hors ligne',{status:503})));}))});";
-    navigator.serviceWorker.register(URL.createObjectURL(new Blob([swCode], {type:'application/javascript'})), {scope:'./'})
-      .catch(e => console.info('[SW]', e.message));
-  }
-  let deferredPrompt = null;
-  const banner = document.getElementById('pwa-banner');
-  window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault(); deferredPrompt = e;
-    if (banner) banner.style.display = 'flex';
-  });
-  const installBtn = document.getElementById('pwa-install-btn');
-  if (installBtn) installBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const {outcome} = await deferredPrompt.userChoice;
-    if (outcome === 'accepted' && banner) banner.style.display = 'none';
-    deferredPrompt = null;
-  });
-  window.addEventListener('appinstalled', () => { if (banner) banner.style.display = 'none'; });
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  if (isIOS && !window.navigator.standalone && /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent)) {
-    setTimeout(() => {
-      const m = document.getElementById('ios-modal');
-      if (m) { m.style.display = 'flex'; setTimeout(() => m.style.display = 'none', 30000); }
-    }, 4000);
-  }
-  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-    if (banner) banner.remove();
-  }
-  function updateDot() {
-    const dot = document.getElementById('as-dot'); if (!dot) return;
-    dot.style.background = navigator.onLine ? '' : '#FF7A00';
-  }
-  window.addEventListener('online', updateDot);
-  window.addEventListener('offline', updateDot);
-  updateDot();
-})();
-</script>
 </body>
 </html>
